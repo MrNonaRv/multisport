@@ -205,12 +205,23 @@ export function initDB() {
     {stat_id:21,player_id:34,match_id:10,sport:"Taekwondo",points:12,kicks:8,punches:4,knockdowns:2},
     {stat_id:22,player_id:36,match_id:11,sport:"Table Tennis",points:11,aces:4,smashes:6,service_wins:3},
   ];
-  const standings = teams.map((t, i) => {
+  const stands = teams.map((t, i) => {
     const won = matches.filter(m => m.status === "completed" && m.winner === t.team_name).length;
     const lost = matches.filter(m => m.status === "completed" && (m.team1_id === t.team_id || m.team2_id === t.team_id) && m.winner && m.winner !== t.team_name).length;
     const total = won + lost;
     return { standing_id: i+1, team_id: t.team_id, wins: won, losses: lost, win_percentage: total > 0 ? +(won/total*100).toFixed(1) : 0 };
   });
+
+  const referees = [
+    { referee_id: 1, name: "John Smith", sport: "Basketball" },
+    { referee_id: 2, name: "Mike Davis", sport: "Basketball" },
+    { referee_id: 3, name: "Sarah Jones", sport: "Basketball" },
+    { referee_id: 4, name: "Emily Chen", sport: "Volleyball" },
+    { referee_id: 5, name: "David Lee", sport: "Badminton" },
+    { referee_id: 6, name: "Master Kim", sport: "Taekwondo" },
+    { referee_id: 7, name: "Lisa Wong", sport: "Table Tennis" },
+  ];
+
   const users = [
     {user_id:1,name:"Admin User",email:"admin@multisports.com",password:"admin123",role:"ADMIN"},
     {user_id:2,name:"Tab Reyes",email:"tab@multisports.com",password:"tab123",role:"TABULATOR"},
@@ -330,7 +341,7 @@ export function initDB() {
     }
   ];
   const sports = SPORTS;
-  return { sports, teams, players, matches, playerStats, standings, users, finalsGames, brackets, activityLogs: [] };
+  return { sports, teams, players, matches, playerStats, standings: stands, users, finalsGames, brackets, activityLogs: [], referees };
 }
 
 export function useW() {

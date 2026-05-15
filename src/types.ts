@@ -109,6 +109,13 @@ export interface ActivityLog {
   timestamp: string;
 }
 
+export interface Referee {
+  referee_id: number;
+  name: string;
+  sport: string;
+  contact?: string;
+}
+
 export interface Database {
   sports: string[];
   teams: Team[];
@@ -119,4 +126,5 @@ export interface Database {
   finalsGames: FinalsGame[];
   brackets: Bracket[];
   activityLogs: ActivityLog[];
+  referees: Referee[];
 }

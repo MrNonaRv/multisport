@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect } from "react";
 import { initDB } from "../db";
-import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket } from "../types";
+import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
 const STORAGE_KEY = "multisports_db";
 
@@ -24,6 +24,8 @@ interface DatabaseContextType {
   updateBracket: (sport: string, bracket: Bracket) => void;
   updateMatchLiveState: (matchId: number, updates: Partial<Match>) => void;
   addSport: (sport: string) => void;
+  addReferee: (referee: Omit<Referee, "referee_id">) => void;
+  deleteReferee: (refereeId: number) => void;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -49,6 +51,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
         }));
         if (!parsed.activityLogs) parsed.activityLogs = [];
+        if (!parsed.referees) parsed.referees = [];
         return parsed;
       } catch (e) {
         console.error("Failed to parse saved database", e);
@@ -119,6 +122,23 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     });
     addActivityLog(`New sport added: ${sport}`);
   }, [addActivityLog]);
+
+  const addReferee = useCallback((referee: Omit<Referee, "referee_id">) => {
+    setDb(prev => {
+      const newId = prev.referees.length > 0 ? Math.max(...prev.referees.map(r => r.referee_id)) + 1 : 1;
+      return {
+        ...prev,
+        referees: [...prev.referees, { ...referee, referee_id: newId }]
+      };
+    });
+  }, []);
+
+  const deleteReferee = useCallback((refereeId: number) => {
+    setDb(prev => ({
+      ...prev,
+      referees: prev.referees.filter(r => r.referee_id !== refereeId)
+    }));
+  }, []);
 
   const updateMatchScore = useCallback((matchId: number, team1Score: number, team2Score: number) => {
     setDb(prev => ({
@@ -294,7 +314,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addActivityLog,
     updateBracket,
     updateMatchLiveState,
-    addSport
+    addSport,
+    addReferee,
+    deleteReferee
   }), [
     db, 
     updateMatchScore, 
@@ -314,7 +336,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addActivityLog,
     updateBracket,
     updateMatchLiveState,
-    addSport
+    addSport,
+    addReferee,
+    deleteReferee
   ]);
 
   return (

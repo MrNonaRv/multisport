@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { Navigate, Link } from "react-router-dom";
-import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X } from "lucide-react";
+import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck } from "lucide-react";
 import { card, PP, Badge } from "../components/Shared";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
 import { Match, Player, Team, User, Bracket, BracketMatch } from "../types";
@@ -101,10 +101,12 @@ export default function Dashboard() {
     deleteUser,
     addActivityLog,
     updateBracket,
-    addSport
+    addSport,
+    addReferee,
+    deleteReferee
   } = useDatabase();
 
-  const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets">("matches");
+  const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets" | "referees">("matches");
   const [msg, setMsg] = useState<{ t: "s" | "e", m: string } | null>(null);
 
   // Match State
@@ -136,6 +138,12 @@ export default function Dashboard() {
 
   // System State
   const [newSportName, setNewSportName] = useState("");
+
+  // Referee State
+  const [newRefName, setNewRefName] = useState("");
+  const [newRefSport, setNewRefSport] = useState("");
+  useEffect(() => { if(!newRefSport && db.sports.length) setNewRefSport(db.sports[0]); }, [db.sports, newRefSport]);
+  const [newRefContact, setNewRefContact] = useState("");
 
   // Bracket State
   const [bracketSport, setBracketSport] = useState("");
@@ -246,6 +254,15 @@ export default function Dashboard() {
     showMsg("s", "Sport added successfully! You can now add teams and matches for it.");
   };
 
+  const handleAddReferee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRefName.trim()) return showMsg("e", "Please enter referee name.");
+    addReferee({ name: newRefName, sport: newRefSport, contact: newRefContact });
+    addActivityLog(`${user?.name} added new referee: ${newRefName} for ${newRefSport}`);
+    setNewRefName(""); setNewRefContact("");
+    showMsg("s", "Referee added successfully!");
+  };
+
   const handleScheduleMatch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMatch.team1_id || !newMatch.team2_id || !newMatch.game_label || !newMatch.match_date) {
@@ -341,6 +358,7 @@ export default function Dashboard() {
         { id: "matches", label: "🎮 MATCHES", color: "#f97316" }, 
         { id: "teams", label: "🛡️ TEAMS", color: "#3b82f6" }, 
         { id: "players", label: "🏃 PLAYERS", color: "#10b981" }, 
+        { id: "referees", label: "🏁 REFEREES", color: "#06b6d4" },
         { id: "brackets", label: "🏆 BRACKETS", color: "#8b5cf6" }, 
         { id: "system", label: "⚙️ SYSTEM (ADD)", color: "#f59e0b" },
         { id: "activity", label: "📝 ACTIVITY", color: "#64748b" }
@@ -461,6 +479,20 @@ export default function Dashboard() {
                     placeholder="e.g. Main Gym"
                     style={{ width: "100%", padding: 12, borderRadius: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 16, fontWeight: 700 }}
                   />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Referee</label>
+                  <select 
+                    value={newMatch.referee} 
+                    onChange={e => setNewMatch({...newMatch, referee: e.target.value})}
+                    style={{ width: "100%", padding: 12, borderRadius: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 16, fontWeight: 700 }}
+                  >
+                    <option value="" style={{ color: "#000" }}>Select Referee</option>
+                    {db.referees.filter(r => r.sport === matchSportFilter).map(r => (
+                      <option key={r.referee_id} value={r.name} style={{ color: "#000" }}>{r.name}</option>
+                    ))}
+                    <option value="TBA">TBA</option>
+                  </select>
                 </div>
               </div>
               <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
@@ -762,6 +794,46 @@ export default function Dashboard() {
     </div>
   );
 
+  const renderRefereesTab = () => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", gap: 32 }}>
+      <div style={{ ...card, background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)", padding: 32, boxShadow: "0 0 25px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}>
+        <h2 style={{ margin: "0 0 32px", fontSize: 24, fontWeight: 900, display: "flex", alignItems: "center", gap: 16 }}><ShieldCheck size={32} color="#06b6d4" /> Add New Referee</h2>
+        <form onSubmit={handleAddReferee} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div>
+            <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Referee Name</label>
+            <input type="text" value={newRefName} onChange={e => setNewRefName(e.target.value)} placeholder="e.g. Pierluigi Collina" style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Sport</label>
+            <select value={newRefSport} onChange={e => setNewRefSport(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
+              {db.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Contact / Info (Optional)</label>
+            <input type="text" value={newRefContact} onChange={e => setNewRefContact(e.target.value)} placeholder="e.g. +63 123 456 7890" style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }} />
+          </div>
+          <button type="submit" style={{ background: "#06b6d4", color: "var(--bg)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: "pointer", marginTop: 8, boxShadow: "0 8px 16px rgba(6, 182, 212, 0.3)" }}>+ REGISTER REFEREE</button>
+        </form>
+      </div>
+      <div style={{ ...card, padding: 32 }}>
+        <h2 style={{ margin: "0 0 32px", fontSize: 24, fontWeight: 900 }}>Referee List</h2>
+        <div style={{ maxHeight: 500, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+          {db.referees?.map(r => (
+            <div key={r.referee_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel-bg)", padding: 20, borderRadius: 16, border: "1px solid var(--border-color)" }}>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 18 }}>{r.name}</div>
+                <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{r.sport} {r.contact && `• ${r.contact}`}</div>
+              </div>
+              <button onClick={() => { if(window.confirm('Delete referee?')) deleteReferee(r.referee_id); }} style={{ background: "rgba(239, 68, 68, 0.1)", border: "none", color: "#ef4444", cursor: "pointer", padding: 12, borderRadius: 12 }}><Trash2 size={24} /></button>
+            </div>
+          ))}
+          {(!db.referees || db.referees.length === 0) && <div style={{ color: "var(--text-muted)", textAlign: "center", padding: 20 }}>No referees registered yet.</div>}
+        </div>
+      </div>
+    </div>
+  );
+
   // --- Box Score Modal ---
   const renderBoxScoreModal = () => {
     if (!boxScoreMatch) return null;
@@ -850,6 +922,7 @@ export default function Dashboard() {
       {activeTab === "matches" && renderMatchesTab()}
       {activeTab === "teams" && renderTeamsTab()}
       {activeTab === "players" && renderPlayersTab()}
+      {activeTab === "referees" && renderRefereesTab()}
       {activeTab === "brackets" && renderBracketsTab()}
       {activeTab === "system" && renderSystemTab()}
       {activeTab === "users" && user.role === "ADMIN" && renderUsersTab()}
