@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 export const SPORTS = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
 export const S_ICONS = { Basketball:"🏀", Volleyball:"🏐", "Table Tennis":"🏓", Badminton:"🏸", "Sepak Takraw":"⚽", Arnis:"⚔️", Taekwondo:"🥋" };
 export const S_STATS = {
-  Basketball:["points","rebounds","assists","steals","blocks","fouls"],
+  Basketball:["points","rebounds","assists","steals","blocks","fouls","substitutions"],
   Volleyball:["kills","digs","aces","blocks","assists","fouls"],
   "Table Tennis":["points","aces","smashes","service_wins"],
   Badminton:["points","smashes","drops","clears"],
@@ -22,72 +22,72 @@ export const COLORS = {
 };
 export const SPORT_THEMES: Record<string, { bg: string, gradient: string[], accent: string, icon: string, patternColor: string, bgImage: string }> = {
   Basketball: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#f97316",
     icon: "🏀",
     patternColor: "rgba(249,115,22,0.1)",
     bgImage: "https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1920&auto=format&fit=crop"
   },
   Volleyball: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#8b5cf6",
     icon: "🏐",
     patternColor: "rgba(139,92,246,0.1)",
     bgImage: "https://images.unsplash.com/photo-1592656631147-f1aa240f9d10?q=80&w=1920&auto=format&fit=crop"
   },
   Badminton: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#3b82f6",
     icon: "🏸",
     patternColor: "rgba(59,130,246,0.1)",
     bgImage: "https://images.unsplash.com/photo-1626225967045-9410dd99fa70?q=80&w=1920&auto=format&fit=crop"
   },
   "Table Tennis": {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#10b981",
     icon: "🏓",
     patternColor: "rgba(16,185,129,0.1)",
     bgImage: "https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=1920&auto=format&fit=crop"
   },
   "Sepak Takraw": {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#db2777",
     icon: "⚽",
     patternColor: "rgba(219,39,119,0.1)",
     bgImage: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1920&auto=format&fit=crop"
   },
   Arnis: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#dc2626",
     icon: "⚔️",
     patternColor: "rgba(220,38,38,0.1)",
     bgImage: "https://images.unsplash.com/photo-1555597673-b21d5c935865?q=80&w=1920&auto=format&fit=crop"
   },
   Taekwondo: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#f59e0b",
     icon: "🥋",
     patternColor: "rgba(245,158,11,0.1)",
     bgImage: "https://images.unsplash.com/photo-1552072092-7f9b8d63efcb?q=80&w=1920&auto=format&fit=crop"
   },
   Chess: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#94a3b8",
     icon: "♟️",
     patternColor: "rgba(148,163,184,0.1)",
     bgImage: "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?q=80&w=1920&auto=format&fit=crop"
   },
   Athletics: {
-    bg: "#0f172a",
-    gradient: ["#0f172a", "#1e293b", "#0f172a"],
+    bg: "var(--panel-bg)",
+    gradient: ["var(--panel-bg)", "var(--bg)", "var(--panel-bg)"],
     accent: "#06b6d4",
     icon: "🏃",
     patternColor: "rgba(6,182,212,0.1)",
@@ -329,7 +329,8 @@ export function initDB() {
       champion: "Sprinters",
     }
   ];
-  return { teams, players, matches, playerStats, standings, users, finalsGames, brackets, activityLogs: [] };
+  const sports = SPORTS;
+  return { sports, teams, players, matches, playerStats, standings, users, finalsGames, brackets, activityLogs: [] };
 }
 
 export function useW() {

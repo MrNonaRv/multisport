@@ -1,0 +1,71 @@
+src/App.tsx:22:    const currentLiveIds = currentLive.map(m => m.match_id.toString());
+src/App.tsx:58:      {activeNotifications.map(notif => {
+src/App.tsx:198:                      {db.sports.map(s => (
+src/App.tsx:265:                    {db.sports.map(s => (
+src/components/LiveMatchControlModal.tsx:270:            {t1Players.map(p => (
+src/components/LiveMatchControlModal.tsx:277:                  {actions.map(a => (
+src/components/LiveMatchControlModal.tsx:296:            {t2Players.map(p => (
+src/components/LiveMatchControlModal.tsx:303:                  {actions.map(a => (
+src/context/DatabaseContext.tsx:80:        const matches = prev.matches.map(m => {
+src/context/DatabaseContext.tsx:99:      const newId = prev.activityLogs.length > 0 ? Math.max(...prev.activityLogs.map(l => l.id)) + 1 : 1;
+src/context/DatabaseContext.tsx:121:      matches: prev.matches.map(m => 
+src/context/DatabaseContext.tsx:130:      matches: prev.matches.map(m => 
+src/context/DatabaseContext.tsx:139:      matches: prev.matches.map(m => 
+src/context/DatabaseContext.tsx:148:      matches: prev.matches.map(m => 
+src/context/DatabaseContext.tsx:164:      const newId = prev.teams.length > 0 ? Math.max(...prev.teams.map(t => t.team_id)) + 1 : 1;
+src/context/DatabaseContext.tsx:175:      teams: prev.teams.map(t => t.team_id === teamId ? { ...t, ...team } : t)
+src/context/DatabaseContext.tsx:189:      const newId = prev.players.length > 0 ? Math.max(...prev.players.map(p => p.player_id)) + 1 : 1;
+src/context/DatabaseContext.tsx:200:      players: prev.players.map(p => p.player_id === playerId ? { ...p, ...player } : p)
+src/context/DatabaseContext.tsx:214:      const newId = prev.matches.length > 0 ? Math.max(...prev.matches.map(m => m.match_id)) + 1 : 1;
+src/context/DatabaseContext.tsx:232:        const newId = prev.playerStats.length > 0 ? Math.max(...prev.playerStats.map(s => s.stat_id)) + 1 : 1;
+src/context/DatabaseContext.tsx:247:      const newId = prev.users.length > 0 ? Math.max(...prev.users.map(u => u.user_id)) + 1 : 1;
+src/context/DatabaseContext.tsx:266:        return { ...prev, brackets: prev.brackets.map(b => b.sport === sport ? bracket : b) };
+src/pages/Dashboard.tsx:150:        qf: Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+src/pages/Dashboard.tsx:151:        sf: Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+src/pages/Dashboard.tsx:276:      ].concat(user.role === "ADMIN" ? [{ id: "users", label: "👑 ADMIN USERS", color: "#ef4444" }] : []).map(tab => (
+src/pages/Dashboard.tsx:310:          {db.sports.map(s => <option key={s} value={s}>{s}</option>)}
+src/pages/Dashboard.tsx:315:        {filteredMatches.map(m => {
+src/pages/Dashboard.tsx:357:              {db.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
+src/pages/Dashboard.tsx:381:          {db.teams.map(t => (
+src/pages/Dashboard.tsx:411:              {db.teams.map(t => <option key={t.team_id} value={t.team_id} style={{ color: "#000" }}>{t.team_name} ({t.sport})</option>)}
+src/pages/Dashboard.tsx:424:          {db.players.map(p => (
+src/pages/Dashboard.tsx:447:            {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
+src/pages/Dashboard.tsx:454:            {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
+src/pages/Dashboard.tsx:479:              {db.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
+src/pages/Dashboard.tsx:491:            {editingBracket.qf.map((match, i) => <React.Fragment key={i}>{renderMatchInputs(match, "qf", i)}</React.Fragment>)}
+src/pages/Dashboard.tsx:497:            {editingBracket.sf.map((match, i) => <React.Fragment key={i}>{renderMatchInputs(match, "sf", i)}</React.Fragment>)}
+src/pages/Dashboard.tsx:537:          {db.users.map(u => (
+src/pages/Dashboard.tsx:567:          {db.sports.map(s => (
+src/pages/Dashboard.tsx:585:          {db.activityLogs?.map(log => (
+src/pages/Dashboard.tsx:619:            {[ { t: teamsMap[match.team1_id], p: t1Players }, { t: teamsMap[match.team2_id], p: t2Players } ].map(({ t, p }) => (
+src/pages/Dashboard.tsx:627:                        {sportStats.map(st => <th key={st} style={{ padding: 8, color: "var(--text-muted)", fontSize: 12, textTransform: "capitalize", textAlign: "center" }}>{st.replace("_", " ")}</th>)}
+src/pages/Dashboard.tsx:631:                      {p.map(player => (
+src/pages/Dashboard.tsx:634:                          {sportStats.map(st => (
+src/pages/Home.tsx:53:            {live.map(m => {
+src/pages/Home.tsx:87:        {db.sports.map(s => {
+src/pages/Home.tsx:122:            {upc.map(m => (
+src/pages/Home.tsx:143:            {cmp.map(m => (
+src/pages/Home.tsx:167:          {db.brackets.slice(0, 3).map(b => (
+src/pages/SportPage.tsx:264:  const sport = sportName ? sportName.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : "Basketball";
+src/pages/SportPage.tsx:355:    return tms.map(t => {
+src/pages/SportPage.tsx:419:              {navs.map(n => (
+src/pages/SportPage.tsx:453:            {navs.map(n => (
+src/pages/SportPage.tsx:487:                {mtc.map(m => (
+src/pages/SportPage.tsx:511:                  {tms.map(t => {
+src/pages/SportPage.tsx:535:                      {pls.filter(p => selTeam ? p.team_id === selTeam : true).map((p, i) => (
+src/pages/SportPage.tsx:601:                            {db.finalsGames.filter(g => g.sport === sport).map((g, i) => (
+src/pages/SportPage.tsx:619:                          {bracket.qf.map((match, i) => (
+src/pages/SportPage.tsx:643:                          {bracket.sf.map((match, i) => (
+src/pages/SportPage.tsx:708:                      {S_STATS[sport as keyof typeof S_STATS]?.map(st => (
+src/pages/SportPage.tsx:717:                    }).slice(0, 15).map((s, i) => {
+src/pages/SportPage.tsx:729:                          {sportStats.map(st => (
+src/pages/SportPage.tsx:758:                    {sortedStandings.map((t, i) => {
+src/pages/SportPage.tsx:873:                  {sts.filter(s => s.player_id === selectedPlayerModal).map(s => {
+src/pages/SportPage.tsx:889:                          {sportStats.map(st => (
+src/pages/SportPage.tsx:920:                  {tms.map(t => <option key={t.team_id} value={t.team_id}>{t.team_name}</option>)}
+src/pages/SportPage.tsx:931:                  {tms.map(t => <option key={t.team_id} value={t.team_id} style={{ color: "#000" }}>{t.team_name}</option>)}
+src/pages/SportPage.tsx:1092:                {[ { t: t1, p: t1Players }, { t: t2, p: t2Players } ].map(({ t, p }) => (
+src/pages/SportPage.tsx:1103:                            {sportStats.map(st => <th key={st} style={{ padding: 12, color: "var(--text-muted)", fontSize: 13, textTransform: "uppercase", textAlign: "center" }}>{st.replace("_", " ")}</th>)}
+src/pages/SportPage.tsx:1107:                          {p.map(player => (
+src/pages/SportPage.tsx:1110:                              {sportStats.map(st => (
+src/db.ts:208:  const standings = teams.map((t, i) => {

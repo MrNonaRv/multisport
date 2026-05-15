@@ -27,7 +27,7 @@ export default function Login() {
           <div style={{ margin: "0 auto 24px", display: "flex", justifyContent: "center" }}>
             <svg width="80" height="80" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M18 2L4 8.22222V17.1111C4 25.1111 9.83333 32.3556 18 34C26.1667 32.3556 32 25.1111 32 17.1111V8.22222L18 2Z" fill="url(#paint0_linear_login)"/>
-              <path d="M18 6.5L27 10.5V17.1111C27 23.2222 23.3333 28.6667 18 30C12.6667 28.6667 9 23.2222 9 17.1111V10.5L18 6.5Z" fill="#0f2040"/>
+              <path d="M18 6.5L27 10.5V17.1111C27 23.2222 23.3333 28.6667 18 30C12.6667 28.6667 9 23.2222 9 17.1111V10.5L18 6.5Z" fill="var(--panel-bg)"/>
               <path d="M18 11L22.5 23H13.5L18 11Z" fill="url(#paint0_linear_login)"/>
               <defs>
                 <linearGradient id="paint0_linear_login" x1="4" y1="2" x2="32" y2="34" gradientUnits="userSpaceOnUse">
@@ -38,7 +38,7 @@ export default function Login() {
             </svg>
           </div>
           <h1 style={{ fontSize: 24, fontWeight: 900, margin: "0 0 8px", letterSpacing: -1 }}>MULTI<span style={{ color: "#38bdf8" }}>SPORTS</span></h1>
-          <p style={{ fontSize: 14, color: "#94a3b8", margin: 0, textTransform: "uppercase", letterSpacing: 2, fontWeight: 700 }}>Staff Login</p>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0, textTransform: "uppercase", letterSpacing: 2, fontWeight: 700 }}>Staff Login</p>
         </div>
 
         {err && (
@@ -49,7 +49,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Email Address</label>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>Email Address</label>
             <div style={{ position: "relative" }}>
               <Mail size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#475569" }} />
               <input 
@@ -58,13 +58,13 @@ export default function Login() {
                 onChange={e => setEmail(e.target.value)}
                 placeholder="staff@multisports.com"
                 required
-                style={{ width: "100%", background: "#0a1628", border: "1px solid #1e3a5f", borderRadius: 12, padding: "12px 12px 12px 40px", color: "#fff", fontSize: 14, outline: "none" }}
+                style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 12, padding: "12px 12px 12px 40px", color: "var(--text-main)", fontSize: 14, outline: "none" }}
               />
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Password</label>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>Password</label>
             <div style={{ position: "relative" }}>
               <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#475569" }} />
               <input 
@@ -73,12 +73,12 @@ export default function Login() {
                 onChange={e => setPass(e.target.value)}
                 placeholder="••••••••"
                 required
-                style={{ width: "100%", background: "#0a1628", border: "1px solid #1e3a5f", borderRadius: 12, padding: "12px 12px 12px 40px", color: "#fff", fontSize: 14, outline: "none" }}
+                style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 12, padding: "12px 12px 12px 40px", color: "var(--text-main)", fontSize: 14, outline: "none" }}
               />
             </div>
           </div>
 
-          <button type="submit" style={{ background: "linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%)", color: "#fff", border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, cursor: "pointer", fontSize: 14, textTransform: "uppercase", letterSpacing: 1, marginTop: 10, boxShadow: "0 10px 20px rgba(56,189,248,0.2)" }}>
+          <button type="submit" style={{ background: "linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%)", color: "#ffffff", border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, cursor: "pointer", fontSize: 14, textTransform: "uppercase", letterSpacing: 1, marginTop: 10, boxShadow: "0 10px 20px rgba(56,189,248,0.2)" }}>
             Sign In
           </button>
         </form>

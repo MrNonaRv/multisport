@@ -3,6 +3,7 @@ export interface Team {
   team_name: string;
   sport: string;
   coach_name: string;
+  logo?: string;
 }
 
 export interface Player {
@@ -28,6 +29,18 @@ export interface Match {
   referee?: string;
   current_period?: string;
   remaining_time?: string;
+  clock_status?: "running" | "paused";
+  last_clock_update?: number;
+  remaining_seconds?: number;
+  recent_action?: {
+    player_name: string;
+    action: string;
+    team_id: number;
+    timestamp: string;
+  };
+  timeouts_team1?: number;
+  timeouts_team2?: number;
+  scheduled_start_time?: string;
 }
 
 export interface PlayerStat {
@@ -97,6 +110,7 @@ export interface ActivityLog {
 }
 
 export interface Database {
+  sports: string[];
   teams: Team[];
   players: Player[];
   matches: Match[];

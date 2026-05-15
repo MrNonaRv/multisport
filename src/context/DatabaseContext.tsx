@@ -22,6 +22,8 @@ interface DatabaseContextType {
   deleteUser: (userId: number) => void;
   addActivityLog: (message: string) => void;
   updateBracket: (sport: string, bracket: Bracket) => void;
+  updateMatchLiveState: (matchId: number, updates: Partial<Match>) => void;
+  addSport: (sport: string) => void;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -31,7 +33,23 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
+        if (!parsed.teams) parsed.teams = [];
+        if (!parsed.players) parsed.players = [];
+        if (!parsed.matches) parsed.matches = [];
+        if (!parsed.playerStats) parsed.playerStats = [];
+        if (!parsed.standings) parsed.standings = [];
+        if (!parsed.users) parsed.users = [];
+        if (!parsed.finalsGames) parsed.finalsGames = [];
+        if (!parsed.brackets) parsed.brackets = [];
+        parsed.brackets = parsed.brackets.map((b: any) => ({
+          ...b,
+          qf: b.qf || Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+          sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+        }));
+        if (!parsed.activityLogs) parsed.activityLogs = [];
+        return parsed;
       } catch (e) {
         console.error("Failed to parse saved database", e);
       }
@@ -43,6 +61,44 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   }, [db]);
 
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const newDb = JSON.parse(e.newValue);
+          setDb(newDb);
+        } catch (error) {
+          console.error("Failed to parse storage update", error);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  // Poll for auto-scheduling live matches
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDb(prev => {
+        let changed = false;
+        const now = new Date();
+        const matches = prev.matches.map(m => {
+          if (m.status === "upcoming" && m.scheduled_start_time) {
+            const scheduledTime = new Date(m.scheduled_start_time);
+            if (now >= scheduledTime) {
+              changed = true;
+              return { ...m, status: "live" as const };
+            }
+          }
+          return m;
+        });
+        if (changed) return { ...prev, matches };
+        return prev;
+      });
+    }, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   const addActivityLog = useCallback((message: string) => {
     setDb(prev => {
       const newId = prev.activityLogs.length > 0 ? Math.max(...prev.activityLogs.map(l => l.id)) + 1 : 1;
@@ -52,6 +108,17 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       };
     });
   }, []);
+
+  const addSport = useCallback((sport: string) => {
+    setDb(prev => {
+      if (prev.sports.includes(sport)) return prev;
+      return {
+        ...prev,
+        sports: [...prev.sports, sport]
+      };
+    });
+    addActivityLog(`New sport added: ${sport}`);
+  }, [addActivityLog]);
 
   const updateMatchScore = useCallback((matchId: number, team1Score: number, team2Score: number) => {
     setDb(prev => ({
@@ -76,6 +143,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       ...prev,
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, status, winner: winner !== undefined ? winner : m.winner } : m
+      )
+    }));
+  }, []);
+
+  const updateMatchLiveState = useCallback((matchId: number, updates: Partial<Match>) => {
+    setDb(prev => ({
+      ...prev,
+      matches: prev.matches.map(m => 
+        m.match_id === matchId ? { ...m, ...updates } : m
       )
     }));
   }, []);
@@ -216,7 +292,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addUser,
     deleteUser,
     addActivityLog,
-    updateBracket
+    updateBracket,
+    updateMatchLiveState,
+    addSport
   }), [
     db, 
     updateMatchScore, 
@@ -234,7 +312,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addUser,
     deleteUser,
     addActivityLog,
-    updateBracket
+    updateBracket,
+    updateMatchLiveState,
+    addSport
   ]);
 
   return (
