@@ -204,7 +204,7 @@ export function initDB() {
     {sport:"Basketball",game:"Game 4",winner:"COMSOA D' MAROON",scoreA:108,scoreB:88,loser:"AB-TECT THUNDERS"},
     {sport:"Basketball",game:"Game 5",winner:"AB-TECT THUNDERS",scoreA:106,scoreB:98,loser:"COMSOA D' MAROON"},
   ];
-  const brackets = [
+  const initialBrackets = [
     {
       sport: "Basketball",
       qf:[
@@ -264,38 +264,20 @@ export function initDB() {
       ],
       final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 3, score2: 1, winner: "Ab-tect thunders" },
       champion: "Ab-tect thunders",
-    },
-    {
-      sport: "Chess",
-      qf:[
-        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 4, score2: 0, winner: "Ab-tect thunders" },
-        { team1: "Techtitans", team2: "Scisoa foxes", score1: 2, score2: 2, winner: "Techtitans" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
-      ],
-      sf:[
-        { team1: "Ab-tect thunders", team2: "Techtitans", score1: 3, score2: 1, winner: "Ab-tect thunders" },
-        { team1: "Scisoa foxes", team2: "Comsoa D' Maroon", score1: 2, score2: 2, winner: "Scisoa foxes" }
-      ],
-      final: { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 3, score2: 1, winner: "Ab-tect thunders" },
-      champion: "Ab-tect thunders",
-    },
-    {
-      sport: "Athletics",
-      qf:[
-        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 10, score2: 8, winner: "Ab-tect thunders" },
-        { team1: "Techtitans", team2: "Scisoa foxes", score1: 5, score2: 12, winner: "Scisoa foxes" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
-      ],
-      sf:[
-        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 14, score2: 10, winner: "Ab-tect thunders" },
-        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 12, score2: 13, winner: "Techtitans" }
-      ],
-      final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 16, score2: 14, winner: "Ab-tect thunders" },
-      champion: "Ab-tect thunders",
     }
   ];
+
+  const brackets = SPORTS.map(sport => {
+    const existing = initialBrackets.find(b => b.sport === sport);
+    if (existing) return existing;
+    return {
+      sport,
+      qf: Array(4).fill({ team1: "", team2: "", score1: 0, score2: 0, winner: "" }),
+      sf: Array(2).fill({ team1: "", team2: "", score1: 0, score2: 0, winner: "" }),
+      final: { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+      champion: ""
+    };
+  });
   const sports = SPORTS;
   return { sports, teams, players, matches, playerStats, standings: stands, users, finalsGames, brackets, activityLogs: [], referees };
 }

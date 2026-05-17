@@ -161,10 +161,9 @@ export default function Home() {
       <div style={{ ...card, background: "var(--panel-bg)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, display: "flex", alignItems: "center", gap: 10 }}><Trophy size={22} color="#f59e0b" /> Tournament Brackets</h3>
-          <Link to="/sport/basketball" style={{ fontSize: 12, color: "#38bdf8", fontWeight: 700, textDecoration: "none" }}>View All Brackets</Link>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))", gap: 16 }}>
-          {db.brackets?.slice(0, 3)?.map(b => (
+          {db.brackets?.map(b => (
             <div key={b.sport} style={{ background: "var(--bg)", borderRadius: 12, padding: 16, border: "1px solid var(--border-color)" }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>{b.sport}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

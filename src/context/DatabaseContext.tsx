@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useMemo, useCall
 import { initDB } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
-const STORAGE_KEY = "multisports_db_v4";
+const STORAGE_KEY = "multisports_db_v5";
 
 interface DatabaseContextType {
   db: Database;
