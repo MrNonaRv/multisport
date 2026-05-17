@@ -91,31 +91,72 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       
       let t1_rounds = match.t1_rounds || 0;
       let t2_rounds = match.t2_rounds || 0;
+      let checkRoundWin = false;
+      let checkMatchWin = false;
 
-      if (match.sport === "Arnis") {
-        if (newS1 >= 5) {
-          t1_rounds += 1;
-          newS1 = 0;
-          newS2 = 0;
-          addActivityLog(`Arnis Round Won by ${t1?.team_name}!`);
-          if (t1_rounds >= 2) {
-             updateMatchStatus(match.match_id, "completed");
-          }
-        } else if (newS2 >= 5) {
-          t2_rounds += 1;
-          newS1 = 0;
-          newS2 = 0;
-          addActivityLog(`Arnis Round Won by ${t2?.team_name}!`);
-          if (t2_rounds >= 2) {
-             updateMatchStatus(match.match_id, "completed");
-          }
+      // Rules mapping
+      let targetScore = 0;
+      let winByTwo = false;
+      let maxRoundsToWin = 1;
+
+      if (match.sport === 'Volleyball') {
+        targetScore = 25; // Simple version: normally 3rd set might be 15, but let's stick to 25
+        if (t1_rounds + t2_rounds === 2) targetScore = 15; // 3rd set
+        winByTwo = true;
+        maxRoundsToWin = 2; // Best of 3
+      } else if (match.sport === 'Table Tennis') {
+        targetScore = 11;
+        winByTwo = true;
+        maxRoundsToWin = 2;
+      } else if (match.sport === 'Badminton' || match.sport === 'Sepak Takraw') {
+        targetScore = 21;
+        winByTwo = true;
+        maxRoundsToWin = 2;
+      } else if (match.sport === 'Arnis') {
+        targetScore = 5;
+        winByTwo = false;
+        maxRoundsToWin = 2;
+      } else if (match.sport === 'Taekwondo') {
+        targetScore = 12; // Sample target gap/score for TKD
+        winByTwo = false;
+        maxRoundsToWin = 2;
+      }
+
+      if (targetScore > 0) {
+        if (winByTwo) {
+           if ((newS1 >= targetScore && newS1 - newS2 >= 2) || (newS2 >= targetScore && newS2 - newS1 >= 2)) {
+               checkRoundWin = true;
+           }
+        } else {
+           if (newS1 >= targetScore || newS2 >= targetScore) {
+               checkRoundWin = true;
+           }
         }
+      }
+
+      if (checkRoundWin) {
+         if (newS1 > newS2) t1_rounds += 1;
+         else if (newS2 > newS1) t2_rounds += 1;
+         
+         addActivityLog(`${match.sport} Set/Round Won by ${newS1 > newS2 ? t1?.team_name : t2?.team_name}!`);
+         newS1 = 0;
+         newS2 = 0;
+         
+         if (t1_rounds >= maxRoundsToWin || t2_rounds >= maxRoundsToWin) {
+             checkMatchWin = true;
+         }
       }
 
       updateMatchScore(match.match_id, newS1, newS2);
       
-      if (match.sport === "Arnis") {
+      if (targetScore > 0) { 
          updateMatchLiveState(match.match_id, { t1_rounds, t2_rounds });
+      }
+
+      if (checkMatchWin) {
+         updateMatchLiveState(match.match_id, { clock_status: "paused" });
+         updateMatchStatus(match.match_id, "completed", t1_rounds >= maxRoundsToWin ? t1?.team_name : t2?.team_name);
+         addActivityLog(`${match.sport} Match Won by ${t1_rounds >= maxRoundsToWin ? t1?.team_name : t2?.team_name}!`);
       }
     }
     
@@ -297,8 +338,20 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: "0 0 200px" }}>
+            {/* Sets/Rounds Area */}
+            {(match.sport !== "Basketball") && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "40px" }}>
+                <span style={{ fontSize: "14px", color: "#64748b", fontWeight: "600", letterSpacing: "1px", marginBottom: "8px" }}>SETS / ROUNDS</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                  <span style={{ fontSize: "48px", fontWeight: "800", color: "#0f172a" }}>{match.t1_rounds || 0}</span>
+                  <span style={{ fontSize: "24px", color: "#cbd5e1" }}>-</span>
+                  <span style={{ fontSize: "48px", fontWeight: "800", color: "#0f172a" }}>{match.t2_rounds || 0}</span>
+                </div>
+              </div>
+            )}
+            
             {/* Center Area, could be timeouts or status */}
-             <div style={{ color: "#64748b", fontSize: "14px", fontWeight: "600", display: "flex", gap: "24px", marginTop: "80px" }}>
+             <div style={{ color: "#64748b", fontSize: "14px", fontWeight: "600", display: "flex", gap: "24px", marginTop: (match.sport !== "Basketball") ? "0px" : "80px" }}>
                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button onClick={() => handleAdjustTimeout(true, -1)} style={{ cursor: "pointer", border: "none", background: "transparent", fontSize: "16px" }}>-</button>

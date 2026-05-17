@@ -113,21 +113,22 @@ export const BSK_COLORS = {
 
 export function initDB() {
   const teamNames = ["Ab-tect thunders", "Comsoa D' Maroon", "Techtitans", "Scisoa foxes"];
-  const allNames = [
-    "Alejandro, Febe Ronile Cape", "Andalecio, Ellah Atanacio", "Añora, James Aloquina", 
-    "Asuro, Leianne Grace Dianne Villanueva", "Aurora, Heinz De Guzman", "Bagolcol, Niel Bryan Puada", 
-    "Belonio, Ereca", "Bultron, Richard Jr. Martinez", "Burata, Michael Ocbeña", 
-    "Conte, Brenn Xerxes Lee Borja", "Crespo, Gwen Mark", "Dacles, John Paolo Mayo", 
-    "Dela Cruz, Jessica Mae Egonia", "Dela Cruz, Melody", "Espinosa, B-Boy", 
-    "Fajarillo, Jr Quianchon", "Flores, Dodie Villanueva", "Fuentes, Fuena Mae", 
-    "Garcia, Rico Odfeminina", "Gaspar, Mary Grace Ubal", "Gonzales, Elhyn Malabor", 
-    "Lalangan, Christian Paul Garcia", "Lantoria, Janah Mae", "Lasala, Christy", 
-    "Lavado, Stephen Patriarca", "Lavalle, Ramon Matthew Legarda", "Losala, Jayxielle Radzy Dela Cruz", 
-    "Lozada, Lenard Gabais", "Macahilig, Christian Dorado", "Marcelino, Chery Joy Mauricio", 
-    "Marquez, Kayle Bautista", "Mora, Ryan James Orbin", "Onayan, Chris Villeza", 
-    "Oseta, Loraine", "Oseta, Shanna Trace Salaya", "Panado, Ryna Mae Tantio", 
-    "Sangrones, Carmela", "Tolentino, Marlita Mae Olithao", "Tuvera, Charlotte Alexis Navarra", 
-    "Villa, Armond Estocada"
+  const girlsNames = [
+    "Alejandro, Febe Ronile Cape", "Andalecio, Ellah Atanacio", "Asuro, Leianne Grace Dianne Villanueva",
+    "Belonio, Ereca", "Dela Cruz, Jessica Mae Egonia", "Dela Cruz, Melody", "Fuentes, Fuena Mae",
+    "Gaspar, Mary Grace Ubal", "Gonzales, Elhyn Malabor", "Lantoria, Janah Mae", "Lasala, Christy",
+    "Marcelino, Chery Joy Mauricio", "Oseta, Loraine", "Oseta, Shanna Trace Salaya", "Panado, Ryna Mae Tantio",
+    "Sangrones, Carmela", "Tolentino, Marlita Mae Olithao", "Tuvera, Charlotte Alexis Navarra"
+  ];
+  
+  const boysNames = [
+    "Villa, Armond Estocada", "Onayan, Chris Villeza", "Marquez, Kayle Bautista", "Mora, Ryan James Orbin",
+    "Lavado, Stephen Patriarca", "Lavalle, Ramon Matthew Legarda", "Losala, Jayxielle Radzy Dela Cruz",
+    "Lozada, Lenard Gabais", "Macahilig, Christian Dorado", "Lalangan, Christian Paul Garcia",
+    "Garcia, Rico Odfeminina", "Espinosa, B-Boy", "Fajarillo, Jr Quianchon", "Flores, Dodie Villanueva",
+    "Bultron, Richard Jr. Martinez", "Burata, Michael Ocbeña", "Conte, Brenn Xerxes Lee Borja",
+    "Crespo, Gwen Mark", "Dacles, John Paolo Mayo", "Aurora, Heinz De Guzman", "Bagolcol, Niel Bryan Puada",
+    "Añora, James Aloquina"
   ];
   
   const teams: any[] = [];
@@ -139,11 +140,17 @@ export function initDB() {
     teamNames.forEach(tName => {
       teams.push({ team_id: tId, team_name: tName, sport, coach_name: "Coach " + tName.split(" ")[1] });
       
-      for (let i=0; i<3; i++) {
+      for (let i=0; i<4; i++) {
         const isMartialArt = sport === "Taekwondo" || sport === "Arnis";
         const isWomen = i % 2 !== 0; 
         const gender = isWomen ? "Female" : "Male";
-        const name = allNames[(pId - 1) % allNames.length];
+        
+        let name = "Player " + pId;
+        if (gender === "Female") {
+          name = girlsNames[(pId - 1) % girlsNames.length];
+        } else {
+          name = boysNames[(pId - 1) % boysNames.length];
+        }
         
         let jersey_number: string | number = Math.floor(Math.random() * 99) + 1;
         if (isMartialArt) {
@@ -163,12 +170,26 @@ export function initDB() {
     });
   });
 
-  const matches = [
-    {match_id:1,sport:"Basketball",team1_id:1,team2_id:2,match_date:"10/25/24",score_team1:85,score_team2:82,winner:"Ab-tect thunders",status:"completed",game_label:"Elimination Round 1",category:"Men's Division",venue:"Main Gym",referee:"John Smith"},
-    {match_id:2,sport:"Volleyball",team1_id:5,team2_id:6,match_date:"10/26/24",score_team1:3,score_team2:1,winner:"Ab-tect thunders",status:"completed",game_label:"Elimination Round 1",category:"Women's Division",venue:"Gym B",referee:"Emily Chen"},
-    {match_id:3,sport:"Taekwondo",team1_id:25,team2_id:26,match_date:"10/27/24",score_team1:0,score_team2:0,winner:null,status:"live",game_label:"Quarter Finals",category:"Men's Division",venue:"Martial Arts Arena",referee:"Master Kim"},
-    {match_id:4,sport:"Arnis",team1_id:21,team2_id:22,match_date:"10/28/24",score_team1:0,score_team2:0,winner:null,status:"upcoming",game_label:"Round 1",category:"Women's Division",venue:"Gym B"}
-  ];
+  let mId = 1;
+  const matches: any[] = [];
+  
+  SPORTS.forEach(sport => {
+    const sportTeams = teams.filter(t => t.sport === sport);
+    if (sportTeams.length >= 2) {
+      matches.push({
+        match_id: mId++, sport, team1_id: sportTeams[0].team_id, team2_id: sportTeams[1].team_id,
+        match_date: "10/25/24", score_team1: 85, score_team2: 82, winner: sportTeams[0].team_name, status: "completed", game_label: "Elimination Round 1", category: "Men's Division", venue: "Main Gym", referee: "John Smith"
+      });
+      matches.push({
+        match_id: mId++, sport, team1_id: sportTeams[2%sportTeams.length].team_id, team2_id: sportTeams[3%sportTeams.length].team_id,
+        match_date: "10/26/24", score_team1: 0, score_team2: 0, winner: null, status: "live", game_label: "Quarter Finals", category: "Women's Division", venue: "Gym B", referee: "Emily Chen"
+      });
+      matches.push({
+        match_id: mId++, sport, team1_id: sportTeams[0].team_id, team2_id: sportTeams[3%sportTeams.length].team_id,
+        match_date: "10/28/24", score_team1: 0, score_team2: 0, winner: null, status: "upcoming", game_label: "Round 1", category: "Men's Division", venue: "Main Gym"
+      });
+    }
+  });
 
   const playerStats = [
     {stat_id:1,player_id:1,match_id:1,sport:"Basketball",points:24,rebounds:10,assists:5,steals:2},
@@ -270,9 +291,16 @@ export function initDB() {
   const brackets = SPORTS.map(sport => {
     const existing = initialBrackets.find(b => b.sport === sport);
     if (existing) return existing;
+    
+    const sportTeams = teams.filter(t => t.sport === sport);
     return {
       sport,
-      qf: Array(4).fill({ team1: "", team2: "", score1: 0, score2: 0, winner: "" }),
+      qf: [
+        { team1: sportTeams[0]?.team_name || "", team2: sportTeams[1]?.team_name || "", score1: 0, score2: 0, winner: "" },
+        { team1: sportTeams[2]?.team_name || "", team2: sportTeams[3]?.team_name || "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
+      ],
       sf: Array(2).fill({ team1: "", team2: "", score1: 0, score2: 0, winner: "" }),
       final: { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
       champion: ""

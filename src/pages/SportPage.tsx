@@ -91,14 +91,16 @@ const MatchCard = React.memo(({
           {(m.sport === "Arnis" || m.sport === "Taekwondo") && <div style={{ fontSize: 13, fontWeight: 900, color: "#ef4444", marginBottom: 2 }}>RED</div>}
           <div style={{ fontWeight: 800, fontSize: 14, color: t1Wins ? "#10b981" : "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>{t1?.team_name} {t1Wins && <Trophy size={16} color="#10b981" />}</div>
           {isLive && m.timeouts_team1 !== undefined && <div style={{ fontSize: 11, color: "#f59e0b", marginTop: 4, fontWeight: 800 }}>Timeouts: {m.timeouts_team1}</div>}
-          {m.sport === "Arnis" && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 4, fontWeight: 900 }}>Rounds: {m.t1_rounds || 0}</div>}
           {t1Wins && <div style={{ fontSize: 10, color: "#10b981", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "#10b98120", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Winner</div>}
           {isCompleted && !t1Wins && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "var(--border-color)", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Defeated</div>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
-          <div style={{ fontSize: 32, fontWeight: 900, color: t1Wins ? "#10b981" : (isCompleted && !t1Wins ? "var(--text-muted)" : "var(--text-main)") }}>{m.score_team1}</div>
-          <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.5 }}>VS</div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: t2Wins ? "#10b981" : (isCompleted && !t2Wins ? "var(--text-muted)" : "var(--text-main)") }}>{m.score_team2}</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: t1Wins ? "#10b981" : (isCompleted && !t1Wins ? "var(--text-muted)" : "var(--text-main)") }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+             <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.5 }}>VS</div>
+             {(m.sport !== "Basketball") && <div style={{ fontSize: 10, marginTop: 4, color: "var(--text-muted)" }}>SETS</div>}
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: t2Wins ? "#10b981" : (isCompleted && !t2Wins ? "var(--text-muted)" : "var(--text-main)") }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
         </div>
         <div style={{ flex: 1, textAlign: "center", opacity: isCompleted && !t2Wins ? 0.5 : 1 }}>
           {t2?.logo ? (
@@ -109,7 +111,6 @@ const MatchCard = React.memo(({
           {(m.sport === "Arnis" || m.sport === "Taekwondo") && <div style={{ fontSize: 13, fontWeight: 900, color: "#3b82f6", marginBottom: 2 }}>BLUE</div>}
           <div style={{ fontWeight: 800, fontSize: 14, color: t2Wins ? "#10b981" : "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>{t2Wins && <Trophy size={16} color="#10b981" />} {t2?.team_name}</div>
           {isLive && m.timeouts_team2 !== undefined && <div style={{ fontSize: 11, color: "#f59e0b", marginTop: 4, fontWeight: 800 }}>Timeouts: {m.timeouts_team2}</div>}
-          {m.sport === "Arnis" && <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 4, fontWeight: 900 }}>Rounds: {m.t2_rounds || 0}</div>}
           {t2Wins && <div style={{ fontSize: 10, color: "#10b981", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "#10b98120", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Winner</div>}
           {isCompleted && !t2Wins && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "var(--border-color)", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Defeated</div>}
         </div>
@@ -1073,17 +1074,20 @@ export default function SportPage() {
                 {/* Match Info summary */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel-bg)", padding: 24, borderRadius: 12 }}>
                   <div style={{ textAlign: "center", flex: 1 }}>
-                    <div style={{ fontSize: 48, fontWeight: 900, color: "var(--text-main)" }}>{match.score_team1}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-muted)" }}>{t1?.team_name}</div>
+                    <div style={{ fontSize: 48, fontWeight: 900, color: "var(--text-main)" }}>{(match.sport !== "Basketball") ? (match.t1_rounds || 0) : match.score_team1}</div>
+                    {(match.sport !== "Basketball") && <div style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {match.score_team1}</div>}
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-muted)", marginTop: 8 }}>{t1?.team_name}</div>
                   </div>
                   <div style={{ flex: 1, textAlign: "center", display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: match.status === "live" ? "#ef4444" : "var(--text-main)", textTransform: "uppercase" }}>{match.status}</div>
+                    {(match.sport !== "Basketball") && <div style={{ fontSize: 12, fontWeight: 900, color: "var(--text-muted)" }}>SETS / ROUNDS</div>}
                     {match.current_period && <div style={{ fontSize: 16, fontWeight: 900, color: "#38bdf8" }}>{match.current_period}</div>}
                     {match.remaining_time && <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-main)" }}>{match.remaining_time}</div>}
                   </div>
                   <div style={{ textAlign: "center", flex: 1 }}>
-                    <div style={{ fontSize: 48, fontWeight: 900, color: "var(--text-main)" }}>{match.score_team2}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-muted)" }}>{t2?.team_name}</div>
+                    <div style={{ fontSize: 48, fontWeight: 900, color: "var(--text-main)" }}>{(match.sport !== "Basketball") ? (match.t2_rounds || 0) : match.score_team2}</div>
+                    {(match.sport !== "Basketball") && <div style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {match.score_team2}</div>}
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-muted)", marginTop: 8 }}>{t2?.team_name}</div>
                   </div>
                 </div>
 

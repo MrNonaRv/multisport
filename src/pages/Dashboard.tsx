@@ -54,10 +54,16 @@ const DashboardMatchCard = React.memo(({
           {isEditing ? (
             <input type="number" value={s1} onChange={e => setS1(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} />
           ) : (
-            <div style={{ fontSize: 32, fontWeight: 900 }}>{m.score_team1}</div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
+              {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team1}</div>}
+            </div>
           )}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--border-color)" }}>VS</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--border-color)", textAlign: "center" }}>
+          VS
+          {(m.sport !== "Basketball") && <div style={{ fontSize: 10, marginTop: 4, color: "var(--text-muted)" }}>SETS/RNDS</div>}
+        </div>
         <div style={{ flex: 1, textAlign: "center" }}>
           {(m.sport === "Arnis" || m.sport === "Taekwondo") ? (
              <div style={{ fontSize: 13, fontWeight: 900, color: "#3b82f6", marginBottom: 2 }}>BLUE <span style={{ color: "var(--text-muted)", fontWeight: 700 }}>• {t2?.team_name}</span></div>
@@ -67,7 +73,10 @@ const DashboardMatchCard = React.memo(({
           {isEditing ? (
             <input type="number" value={s2} onChange={e => setS2(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} />
           ) : (
-            <div style={{ fontSize: 32, fontWeight: 900 }}>{m.score_team2}</div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
+              {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team2}</div>}
+            </div>
           )}
         </div>
       </div>

@@ -67,12 +67,14 @@ export default function Home() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ flex: 1, textAlign: "right" }}>
                         <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>{t1?.team_name}</div>
-                        <div style={{ fontSize: 36, fontWeight: 900, color: "var(--text-main)", lineHeight: 1 }}>{m.score_team1}</div>
+                        <div style={{ fontSize: 36, fontWeight: 900, color: "var(--text-main)", lineHeight: 1 }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
+                        {(m.sport !== "Basketball") && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>PTS: {m.score_team1}</div>}
                       </div>
                       <div style={{ padding: "0 24px", color: "#475569", fontWeight: 800, fontSize: 16 }}>VS</div>
                       <div style={{ flex: 1, textAlign: "left" }}>
                         <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 4 }}>{t2?.team_name}</div>
-                        <div style={{ fontSize: 36, fontWeight: 900, color: "var(--text-main)", lineHeight: 1 }}>{m.score_team2}</div>
+                        <div style={{ fontSize: 36, fontWeight: 900, color: "var(--text-main)", lineHeight: 1 }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
+                        {(m.sport !== "Basketball") && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>PTS: {m.score_team2}</div>}
                       </div>
                     </div>
                   </div>
@@ -148,7 +150,7 @@ export default function Home() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)" }}>
                       <span style={{ color: m.winner === gTeam(m.team1_id)?.team_name ? "#10b981" : "var(--text-main)" }}>{gTeam(m.team1_id)?.team_name}</span> <span style={{ color: "var(--text-muted)" }}>vs</span> <span style={{ color: m.winner === gTeam(m.team2_id)?.team_name ? "#10b981" : "var(--text-main)" }}>{gTeam(m.team2_id)?.team_name}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.sport} • {m.score_team1} - {m.score_team2}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.sport} • {(m.sport !== "Basketball") ? `${m.t1_rounds || 0} - ${m.t2_rounds || 0}` : `${m.score_team1} - ${m.score_team2}`}</div>
                   </div>
                 </div>
                 <span style={Badge("var(--border-color)")}>{m.game_label}</span>
