@@ -61,7 +61,11 @@ export default function Home() {
                        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = `${c}80`; }}>
                     <div style={{ position: "absolute", top: -20, right: -20, fontSize: 100, opacity: 0.05 }}>{S_ICONS[m.sport as keyof typeof S_ICONS]}</div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                      <span style={Badge(c)}>{m.sport} • {m.game_label}</span>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={Badge(c)}>{m.sport}</span>
+                        {m.category && <span style={Badge("var(--border-color)")}>{m.category}</span>}
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>{m.game_label}</span>
+                      </div>
                       <span style={{ fontSize: 12, color: "#ef4444", fontWeight: 800, display: "flex", alignItems: "center", gap: 4 }}><Activity size={14} /> LIVE</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -130,7 +134,10 @@ export default function Home() {
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.sport} • {m.match_date}</div>
                   </div>
                 </div>
-                <span style={Badge("#f59e0b")}>{m.game_label}</span>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {m.category && <span style={Badge("var(--border-color)")}>{m.category}</span>}
+                  <span style={Badge("#f59e0b")}>{m.game_label}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -153,7 +160,10 @@ export default function Home() {
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.sport} • {(m.sport !== "Basketball") ? `${m.t1_rounds || 0} - ${m.t2_rounds || 0}` : `${m.score_team1} - ${m.score_team2}`}</div>
                   </div>
                 </div>
-                <span style={Badge("var(--border-color)")}>{m.game_label}</span>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {m.category && <span style={Badge("var(--border-color)")}>{m.category}</span>}
+                  <span style={Badge("var(--border-color)")}>{m.game_label}</span>
+                </div>
               </div>
             ))}
           </div>

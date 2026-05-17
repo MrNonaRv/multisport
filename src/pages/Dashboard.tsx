@@ -27,9 +27,13 @@ const DashboardMatchCard = React.memo(({
   return (
     <div style={{ background: "var(--panel-bg)", border: "1px solid var(--border-color)", borderRadius: 16, padding: 20, boxShadow: "0 0 15px var(--glow-color), 0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <span style={Badge(m.status === "live" ? "#ef4444" : m.status === "completed" ? "#10b981" : "var(--text-muted)")}>
-          {m.status.toUpperCase()}
-        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={Badge(m.status === "live" ? "#ef4444" : m.status === "completed" ? "#10b981" : "var(--text-muted)")}>
+            {m.status.toUpperCase()}
+          </span>
+          {m.category && <span style={Badge("var(--border-hover)")}>{m.category}</span>}
+          {m.game_label && <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, padding: "2px 6px", background: "var(--bg)", borderRadius: 4, whiteSpace: "nowrap" }}>{m.game_label}</span>}
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <select 
             value={m.status}

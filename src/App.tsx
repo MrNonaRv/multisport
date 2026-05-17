@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import SportPage from "./pages/SportPage";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Archives from "./pages/Archives";
 import { DatabaseProvider, useDatabase } from "./context/DatabaseContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { BouncingBallsBackground } from "./components/BouncingBallsBackground";
@@ -194,6 +195,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             {!mob ? (
               <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
                 <Link to="/" className="nav-link" style={{ color: loc.pathname === "/" ? "#38bdf8" : "var(--text-muted)", textDecoration: "none", fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: 1, transition: "color 0.2s" }}>Dashboard</Link>
+                <Link to="/archives" className="nav-link" style={{ color: loc.pathname === "/archives" ? "#38bdf8" : "var(--text-muted)", textDecoration: "none", fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: 1, transition: "color 0.2s" }}>Archives</Link>
                 
                 <div style={{ position: "relative" }} ref={dropdownRef}>
                   <button 
@@ -275,6 +277,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               }}>
                 <button style={{ ...HAM, position: "absolute", top: 16, right: 20 }} onClick={() => setMenu(false)}><X /></button>
                 <Link to="/" onClick={() => setMenu(false)} style={{ color: loc.pathname === "/" ? "#38bdf8" : "var(--text-main)", textDecoration: "none", fontSize: 20, fontWeight: 800 }}>Dashboard</Link>
+                <Link to="/archives" onClick={() => setMenu(false)} style={{ color: loc.pathname === "/archives" ? "#38bdf8" : "var(--text-main)", textDecoration: "none", fontSize: 20, fontWeight: 800 }}>Archives</Link>
                 <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 20 }}>
                   <div style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Sports</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
@@ -325,6 +328,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/sport/:sportName" element={<SportPage />} />
+              <Route path="/archives" element={<Archives />} />
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<Dashboard />} />
             </Routes>
