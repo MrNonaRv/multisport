@@ -4,12 +4,12 @@ export const SPORTS = ["Basketball","Volleyball","Table Tennis","Badminton","Sep
 export const S_ICONS = { Basketball:"🏀", Volleyball:"🏐", "Table Tennis":"🏓", Badminton:"🏸", "Sepak Takraw":"⚽", Arnis:"⚔️", Taekwondo:"🥋" };
 export const S_STATS = {
   Basketball:["points","rebounds","assists","steals","blocks","fouls","substitutions"],
-  Volleyball:["kills","digs","aces","blocks","assists","fouls"],
+  Volleyball:["points","kills","blocks","aces","errors"],
   "Table Tennis":["points","aces","smashes","service_wins"],
   Badminton:["points","smashes","drops","clears"],
   "Sepak Takraw":["points","kicks","headers","rolls"],
   Arnis:["points","strikes","blocks","disarms"],
-  Taekwondo:["points","kicks","punches","knockdowns"],
+  Taekwondo:["points","kicks","punches","gam_jeom"],
 };
 export const COLORS = {
   Basketball: "#F97316",
@@ -95,6 +95,10 @@ export const SPORT_THEMES: Record<string, { bg: string, gradient: string[], acce
   }
 };
 export const BSK_COLORS = {
+  "Ab-tect thunders":{bg:"#1a1a2e",accent:"#F97316"},
+  "Comsoa D' Maroon":{bg:"#2d0a0a",accent:"#ef4444"},
+  "Techtitans":{bg:"#0f2040",accent:"#38bdf8"},
+  "Scisoa foxes":{bg:"#451a03",accent:"#f59e0b"},
   "Falcons":{bg:"#1a1a2e",accent:"#F97316"},
   "Thunderbolts":{bg:"#0f2040",accent:"#38bdf8"},
   "Kalye Bomba":{bg:"#7c2d12",accent:"#f97316"},
@@ -108,102 +112,69 @@ export const BSK_COLORS = {
 };
 
 export function initDB() {
-  const teams = [
-    {team_id:1,team_name:"Falcons",sport:"Basketball",coach_name:"Coach Rivera"},
-    {team_id:2,team_name:"Thunderbolts",sport:"Basketball",coach_name:"Coach Santos"},
-    {team_id:3,team_name:"Kalye Bomba",sport:"Basketball",coach_name:"Coach Cruz"},
-    {team_id:4,team_name:"Lightning RSL",sport:"Basketball",coach_name:"Coach Flores"},
-    {team_id:5,team_name:"Luisa's Park",sport:"Basketball",coach_name:"Coach Dela Rosa"},
-    {team_id:6,team_name:"Proper",sport:"Basketball",coach_name:"Coach Tan"},
-    {team_id:7,team_name:"Railways Home",sport:"Basketball",coach_name:"Coach Reyes"},
-    {team_id:8,team_name:"Sitio Baklayan",sport:"Basketball",coach_name:"Coach Ocampo"},
-    {team_id:9,team_name:"Team Matnog",sport:"Basketball",coach_name:"Coach Lim"},
-    {team_id:10,team_name:"The Big House Team",sport:"Basketball",coach_name:"Coach Park"},
-    {team_id:11,team_name:"Aces",sport:"Volleyball",coach_name:"Coach Dela Cruz"},
-    {team_id:12,team_name:"Spikes",sport:"Volleyball",coach_name:"Coach Mendoza"},
-    {team_id:13,team_name:"Smashers",sport:"Badminton",coach_name:"Coach Bautista"},
-    {team_id:14,team_name:"Shuttlers",sport:"Badminton",coach_name:"Coach Lim"},
-    {team_id:15,team_name:"Dragons",sport:"Taekwondo",coach_name:"Coach Park"},
-    {team_id:16,team_name:"Scorpions",sport:"Taekwondo",coach_name:"Coach Kim"},
-    {team_id:17,team_name:"Raptors",sport:"Table Tennis",coach_name:"Coach Wu"},
-    {team_id:18,team_name:"Blazers",sport:"Table Tennis",coach_name:"Coach Chen"},
+  const teamNames = ["Ab-tect thunders", "Comsoa D' Maroon", "Techtitans", "Scisoa foxes"];
+  const allNames = [
+    "Alejandro, Febe Ronile Cape", "Andalecio, Ellah Atanacio", "Añora, James Aloquina", 
+    "Asuro, Leianne Grace Dianne Villanueva", "Aurora, Heinz De Guzman", "Bagolcol, Niel Bryan Puada", 
+    "Belonio, Ereca", "Bultron, Richard Jr. Martinez", "Burata, Michael Ocbeña", 
+    "Conte, Brenn Xerxes Lee Borja", "Crespo, Gwen Mark", "Dacles, John Paolo Mayo", 
+    "Dela Cruz, Jessica Mae Egonia", "Dela Cruz, Melody", "Espinosa, B-Boy", 
+    "Fajarillo, Jr Quianchon", "Flores, Dodie Villanueva", "Fuentes, Fuena Mae", 
+    "Garcia, Rico Odfeminina", "Gaspar, Mary Grace Ubal", "Gonzales, Elhyn Malabor", 
+    "Lalangan, Christian Paul Garcia", "Lantoria, Janah Mae", "Lasala, Christy", 
+    "Lavado, Stephen Patriarca", "Lavalle, Ramon Matthew Legarda", "Losala, Jayxielle Radzy Dela Cruz", 
+    "Lozada, Lenard Gabais", "Macahilig, Christian Dorado", "Marcelino, Chery Joy Mauricio", 
+    "Marquez, Kayle Bautista", "Mora, Ryan James Orbin", "Onayan, Chris Villeza", 
+    "Oseta, Loraine", "Oseta, Shanna Trace Salaya", "Panado, Ryna Mae Tantio", 
+    "Sangrones, Carmela", "Tolentino, Marlita Mae Olithao", "Tuvera, Charlotte Alexis Navarra", 
+    "Villa, Armond Estocada"
   ];
-  const players = [
-    {player_id:1,player_name:"Juan dela Cruz",team_id:1,sport:"Basketball",jersey_number:7},
-    {player_id:2,player_name:"Miguel Santos",team_id:1,sport:"Basketball",jersey_number:12},
-    {player_id:3,player_name:"Nico Garcia",team_id:1,sport:"Basketball",jersey_number:23},
-    {player_id:4,player_name:"Carlo Reyes",team_id:2,sport:"Basketball",jersey_number:5},
-    {player_id:5,player_name:"Paolo Manalo",team_id:2,sport:"Basketball",jersey_number:21},
-    {player_id:6,player_name:"Neal Patrick Golero",team_id:7,sport:"Basketball",jersey_number:24},
-    {player_id:7,player_name:"Bawi Golero",team_id:7,sport:"Basketball",jersey_number:2},
-    {player_id:8,player_name:"John Loyd Golero",team_id:7,sport:"Basketball",jersey_number:34},
-    {player_id:9,player_name:"John Loyd Denaga",team_id:7,sport:"Basketball",jersey_number:9},
-    {player_id:10,player_name:"Mat-Mat Golero",team_id:7,sport:"Basketball",jersey_number:8},
-    {player_id:11,player_name:"Dodoy Langorayan",team_id:7,sport:"Basketball",jersey_number:3},
-    {player_id:12,player_name:"Jojo Asquilon",team_id:7,sport:"Basketball",jersey_number:14},
-    {player_id:13,player_name:"Yan-Yan Olivera",team_id:7,sport:"Basketball",jersey_number:5},
-    {player_id:14,player_name:"Mike Solomon",team_id:7,sport:"Basketball",jersey_number:17},
-    {player_id:15,player_name:"Steve Candelario",team_id:7,sport:"Basketball",jersey_number:27},
-    {player_id:16,player_name:"Chud Golero",team_id:7,sport:"Basketball",jersey_number:35},
-    {player_id:17,player_name:"John Rex Solomon",team_id:7,sport:"Basketball",jersey_number:4},
-    {player_id:18,player_name:"Franzel Beluso",team_id:3,sport:"Basketball",jersey_number:5},
-    {player_id:19,player_name:"Vincent Estrella",team_id:3,sport:"Basketball",jersey_number:6},
-    {player_id:20,player_name:"Christian Estrella",team_id:3,sport:"Basketball",jersey_number:27},
-    {player_id:21,player_name:"Hansel Hablo",team_id:3,sport:"Basketball",jersey_number:20},
-    {player_id:22,player_name:"Miguel Ballon",team_id:4,sport:"Basketball",jersey_number:11},
-    {player_id:23,player_name:"Jade Canindo",team_id:5,sport:"Basketball",jersey_number:79},
-    {player_id:24,player_name:"Marcus Fortaleza",team_id:6,sport:"Basketball",jersey_number:77},
-    {player_id:25,player_name:"Khevin Bagamasmad",team_id:8,sport:"Basketball",jersey_number:10},
-    {player_id:26,player_name:"Remart Hordejan",team_id:9,sport:"Basketball",jersey_number:17},
-    {player_id:27,player_name:"Andrian Amparo",team_id:10,sport:"Basketball",jersey_number:1},
-    {player_id:28,player_name:"Patrick Golero",team_id:10,sport:"Basketball",jersey_number:8},
-    {player_id:29,player_name:"Ana Gomez",team_id:11,sport:"Volleyball",jersey_number:3},
-    {player_id:30,player_name:"Maria Cruz",team_id:11,sport:"Volleyball",jersey_number:9},
-    {player_id:31,player_name:"Sofia Reyes",team_id:12,sport:"Volleyball",jersey_number:1},
-    {player_id:32,player_name:"Ken Matsuda",team_id:13,sport:"Badminton",jersey_number:1},
-    {player_id:33,player_name:"Rex Chua",team_id:14,sport:"Badminton",jersey_number:1},
-    {player_id:34,player_name:"Jin Park",team_id:15,sport:"Taekwondo",jersey_number:1},
-    {player_id:35,player_name:"Lee Sung",team_id:16,sport:"Taekwondo",jersey_number:1},
-    {player_id:36,player_name:"Mei Ling",team_id:17,sport:"Table Tennis",jersey_number:1},
-    {player_id:37,player_name:"Wei Zhang",team_id:18,sport:"Table Tennis",jersey_number:1},
-  ];
+  
+  const teams: any[] = [];
+  const players: any[] = [];
+  let tId = 1;
+  let pId = 1;
+
+  SPORTS.forEach(sport => {
+    teamNames.forEach(tName => {
+      teams.push({ team_id: tId, team_name: tName, sport, coach_name: "Coach " + tName.split(" ")[1] });
+      
+      for (let i=0; i<3; i++) {
+        const isMartialArt = sport === "Taekwondo" || sport === "Arnis";
+        const isWomen = i % 2 !== 0; 
+        const gender = isWomen ? "Female" : "Male";
+        const name = allNames[(pId - 1) % allNames.length];
+        
+        let jersey_number: string | number = Math.floor(Math.random() * 99) + 1;
+        if (isMartialArt) {
+          jersey_number = i % 2 === 0 ? "Red" : "Blue";
+        }
+        
+        players.push({
+          player_id: pId++,
+          player_name: name,
+          team_id: tId,
+          sport,
+          jersey_number,
+          gender
+        });
+      }
+      tId++;
+    });
+  });
+
   const matches = [
-    {match_id:1,sport:"Basketball",team1_id:1,team2_id:2,match_date:"2025-06-10",score_team1:107,score_team2:96,winner:"Falcons",status:"completed",game_label:"Game 1",venue:"City Arena",referee:"John Smith"},
-    {match_id:2,sport:"Basketball",team1_id:1,team2_id:2,match_date:"2025-06-12",score_team1:110,score_team2:101,winner:"Falcons",status:"completed",game_label:"Game 2",venue:"City Arena",referee:"Mike Davis"},
-    {match_id:3,sport:"Basketball",team1_id:1,team2_id:2,match_date:"2025-06-14",score_team1:105,score_team2:99,winner:"Falcons",status:"completed",game_label:"Game 3",venue:"Downtown Court",referee:"Sarah Jones"},
-    {match_id:4,sport:"Basketball",team1_id:2,team2_id:1,match_date:"2025-06-16",score_team1:108,score_team2:88,winner:"Thunderbolts",status:"completed",game_label:"Game 4",venue:"Downtown Court",referee:"John Smith"},
-    {match_id:5,sport:"Basketball",team1_id:1,team2_id:2,match_date:"2025-06-18",score_team1:106,score_team2:98,winner:"Falcons",status:"completed",game_label:"Game 5",venue:"City Arena",referee:"Mike Davis"},
-    {match_id:6,sport:"Basketball",team1_id:3,team2_id:4,match_date:"2025-06-20",score_team1:88,score_team2:75,winner:"Kalye Bomba",status:"completed",game_label:"QF 1",venue:"Local Gym",referee:"Tom Wilson"},
-    {match_id:7,sport:"Basketball",team1_id:5,team2_id:6,match_date:"2025-06-21",score_team1:42,score_team2:38,winner:null,status:"live",game_label:"QF 2",venue:"Local Gym",referee:"Sarah Jones"},
-    {match_id:8,sport:"Volleyball",team1_id:11,team2_id:12,match_date:"2025-06-11",score_team1:25,score_team2:21,winner:"Aces",status:"completed",game_label:"Game 1",venue:"Sports Complex",referee:"Emily Chen"},
-    {match_id:9,sport:"Badminton",team1_id:13,team2_id:14,match_date:"2025-06-13",score_team1:21,score_team2:18,winner:"Smashers",status:"completed",game_label:"Game 1",venue:"Racket Club",referee:"David Lee"},
-    {match_id:10,sport:"Taekwondo",team1_id:15,team2_id:16,match_date:"2025-06-14",score_team1:12,score_team2:9,winner:"Dragons",status:"completed",game_label:"Match 1",venue:"Martial Arts Center",referee:"Master Kim"},
-    {match_id:11,sport:"Table Tennis",team1_id:17,team2_id:18,match_date:"2025-06-14",score_team1:11,score_team2:8,winner:"Raptors",status:"completed",game_label:"Match 1",venue:"Community Hall",referee:"Lisa Wong"},
-    {match_id:12,sport:"Volleyball",team1_id:11,team2_id:12,match_date:"2025-06-22",score_team1:0,score_team2:0,winner:null,status:"upcoming",game_label:"Game 2",venue:"Sports Complex",referee:"Emily Chen"},
+    {match_id:1,sport:"Basketball",team1_id:1,team2_id:2,match_date:"10/25/24",score_team1:85,score_team2:82,winner:"Ab-tect thunders",status:"completed",game_label:"Elimination Round 1",category:"Men's Division",venue:"Main Gym",referee:"John Smith"},
+    {match_id:2,sport:"Volleyball",team1_id:5,team2_id:6,match_date:"10/26/24",score_team1:3,score_team2:1,winner:"Ab-tect thunders",status:"completed",game_label:"Elimination Round 1",category:"Women's Division",venue:"Gym B",referee:"Emily Chen"},
+    {match_id:3,sport:"Taekwondo",team1_id:25,team2_id:26,match_date:"10/27/24",score_team1:0,score_team2:0,winner:null,status:"live",game_label:"Quarter Finals",category:"Men's Division",venue:"Martial Arts Arena",referee:"Master Kim"},
+    {match_id:4,sport:"Arnis",team1_id:21,team2_id:22,match_date:"10/28/24",score_team1:0,score_team2:0,winner:null,status:"upcoming",game_label:"Round 1",category:"Women's Division",venue:"Gym B"}
   ];
+
   const playerStats = [
-    {stat_id:1,player_id:1,match_id:1,sport:"Basketball",points:28,rebounds:5,assists:7,steals:2,blocks:1},
-    {stat_id:2,player_id:2,match_id:1,sport:"Basketball",points:15,rebounds:8,assists:3,steals:1,blocks:3},
-    {stat_id:3,player_id:4,match_id:1,sport:"Basketball",points:20,rebounds:6,assists:2,steals:3,blocks:0},
-    {stat_id:4,player_id:1,match_id:2,sport:"Basketball",points:18,rebounds:4,assists:5,steals:1,blocks:2},
-    {stat_id:5,player_id:18,match_id:6,sport:"Basketball",points:137,rebounds:32,assists:18,steals:9,blocks:5},
-    {stat_id:6,player_id:19,match_id:6,sport:"Basketball",points:131,rebounds:28,assists:22,steals:7,blocks:3},
-    {stat_id:7,player_id:20,match_id:6,sport:"Basketball",points:129,rebounds:30,assists:15,steals:6,blocks:4},
-    {stat_id:8,player_id:23,match_id:6,sport:"Basketball",points:124,rebounds:25,assists:19,steals:5,blocks:2},
-    {stat_id:9,player_id:22,match_id:6,sport:"Basketball",points:124,rebounds:22,assists:17,steals:8,blocks:1},
-    {stat_id:10,player_id:24,match_id:7,sport:"Basketball",points:122,rebounds:20,assists:21,steals:4,blocks:6},
-    {stat_id:11,player_id:25,match_id:7,sport:"Basketball",points:119,rebounds:18,assists:16,steals:11,blocks:2},
-    {stat_id:12,player_id:27,match_id:7,sport:"Basketball",points:119,rebounds:35,assists:12,steals:3,blocks:7},
-    {stat_id:13,player_id:26,match_id:7,sport:"Basketball",points:116,rebounds:27,assists:14,steals:6,blocks:3},
-    {stat_id:14,player_id:21,match_id:6,sport:"Basketball",points:111,rebounds:24,assists:20,steals:5,blocks:2},
-    {stat_id:15,player_id:28,match_id:7,sport:"Basketball",points:106,rebounds:19,assists:11,steals:4,blocks:5},
-    {stat_id:16,player_id:6,match_id:1,sport:"Basketball",points:101,rebounds:16,assists:13,steals:3,blocks:2},
-    {stat_id:17,player_id:17,match_id:1,sport:"Basketball",points:101,rebounds:14,assists:10,steals:2,blocks:1},
-    {stat_id:18,player_id:29,match_id:8,sport:"Volleyball",kills:14,digs:8,aces:3,blocks:2,assists:5},
-    {stat_id:19,player_id:30,match_id:8,sport:"Volleyball",kills:10,digs:12,aces:1,blocks:3,assists:9},
-    {stat_id:20,player_id:32,match_id:9,sport:"Badminton",points:21,smashes:8,drops:5,clears:10},
-    {stat_id:21,player_id:34,match_id:10,sport:"Taekwondo",points:12,kicks:8,punches:4,knockdowns:2},
-    {stat_id:22,player_id:36,match_id:11,sport:"Table Tennis",points:11,aces:4,smashes:6,service_wins:3},
+    {stat_id:1,player_id:1,match_id:1,sport:"Basketball",points:24,rebounds:10,assists:5,steals:2},
+    {stat_id:2,player_id:2,match_id:1,sport:"Basketball",points:15,rebounds:4,assists:8},
+    {stat_id:3,player_id:13,match_id:2,sport:"Volleyball",points:10,kills:14,aces:3,blocks:2,errors:1},
+    {stat_id:4,player_id:14,match_id:2,sport:"Volleyball",points:12,kills:10,aces:1,blocks:4,errors:3},
   ];
   const stands = teams.map((t, i) => {
     const won = matches.filter(m => m.status === "completed" && m.winner === t.team_name).length;
@@ -223,121 +194,106 @@ export function initDB() {
   ];
 
   const users = [
-    {user_id:1,name:"Admin User",email:"admin@multisports.com",password:"admin123",role:"ADMIN"},
-    {user_id:2,name:"Tab Reyes",email:"tab@multisports.com",password:"tab123",role:"TABULATOR"},
+    {user_id:1,name:"Admin User",email:"admin@sportsmetrics.com",password:"admin123",role:"ADMIN"},
+    {user_id:2,name:"Tab Reyes",email:"tab@sportsmetrics.com",password:"tab123",role:"TABULATOR"},
   ];
   const finalsGames = [
-    {sport:"Basketball",game:"Game 1",winner:"FALCONS",scoreA:107,scoreB:96,loser:"THUNDERBOLTS"},
-    {sport:"Basketball",game:"Game 2",winner:"FALCONS",scoreA:110,scoreB:101,loser:"THUNDERBOLTS"},
-    {sport:"Basketball",game:"Game 3",winner:"FALCONS",scoreA:105,scoreB:99,loser:"THUNDERBOLTS"},
-    {sport:"Basketball",game:"Game 4",winner:"THUNDERBOLTS",scoreA:108,scoreB:88,loser:"FALCONS"},
-    {sport:"Basketball",game:"Game 5",winner:"FALCONS",scoreA:106,scoreB:98,loser:"THUNDERBOLTS"},
+    {sport:"Basketball",game:"Game 1",winner:"AB-TECT THUNDERS",scoreA:107,scoreB:96,loser:"COMSOA D' MAROON"},
+    {sport:"Basketball",game:"Game 2",winner:"AB-TECT THUNDERS",scoreA:110,scoreB:101,loser:"COMSOA D' MAROON"},
+    {sport:"Basketball",game:"Game 3",winner:"AB-TECT THUNDERS",scoreA:105,scoreB:99,loser:"COMSOA D' MAROON"},
+    {sport:"Basketball",game:"Game 4",winner:"COMSOA D' MAROON",scoreA:108,scoreB:88,loser:"AB-TECT THUNDERS"},
+    {sport:"Basketball",game:"Game 5",winner:"AB-TECT THUNDERS",scoreA:106,scoreB:98,loser:"COMSOA D' MAROON"},
   ];
   const brackets = [
     {
       sport: "Basketball",
       qf:[
-        { team1: "Falcons", team2: "Thunderbolts", score1: 102, score2: 98, winner: "Falcons" },
-        { team1: "Kalye Bomba", team2: "Lightning RSL", score1: 88, score2: 85, winner: "Kalye Bomba" },
-        { team1: "Luisa's Park", team2: "Proper", score1: 95, score2: 90, winner: "Luisa's Park" },
-        { team1: "Railways Home", team2: "Sitio Baklayan", score1: 78, score2: 82, winner: "Sitio Baklayan" }
+        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 102, score2: 98, winner: "Ab-tect thunders" },
+        { team1: "Techtitans", team2: "Scisoa foxes", score1: 88, score2: 85, winner: "Techtitans" },
+        { team1: "Ab-tect thunders", team2: "Techtitans", score1: 95, score2: 90, winner: "Ab-tect thunders" },
+        { team1: "Comsoa D' Maroon", team2: "Scisoa foxes", score1: 78, score2: 82, winner: "Scisoa foxes" }
       ],
       sf:[
-        { team1: "Falcons", team2: "Kalye Bomba", score1: 110, score2: 105, winner: "Falcons" },
-        { team1: "Luisa's Park", team2: "Sitio Baklayan", score1: 92, score2: 88, winner: "Luisa's Park" }
+        { team1: "Ab-tect thunders", team2: "Techtitans", score1: 110, score2: 105, winner: "Ab-tect thunders" },
+        { team1: "Comsoa D' Maroon", team2: "Scisoa foxes", score1: 92, score2: 88, winner: "Comsoa D' Maroon" }
       ],
-      final: { team1: "Falcons", team2: "Luisa's Park", score1: 106, score2: 98, winner: "Falcons" },
-      champion: "Falcons",
+      final: { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 106, score2: 98, winner: "Ab-tect thunders" },
+      champion: "Ab-tect thunders",
     },
     {
       sport: "Volleyball",
       qf:[
-        { team1: "Spikers", team2: "Diggers", score1: 3, score2: 1, winner: "Spikers" },
-        { team1: "Setters", team2: "Blockers", score1: 2, score2: 3, winner: "Blockers" },
-        { team1: "Aces", team2: "Servers", score1: 3, score2: 0, winner: "Aces" },
-        { team1: "Liberos", team2: "Hitters", score1: 1, score2: 3, winner: "Hitters" }
+        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 3, score2: 1, winner: "Ab-tect thunders" },
+        { team1: "Techtitans", team2: "Scisoa foxes", score1: 2, score2: 3, winner: "Scisoa foxes" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
       ],
       sf:[
-        { team1: "Spikers", team2: "Blockers", score1: 3, score2: 2, winner: "Spikers" },
-        { team1: "Aces", team2: "Hitters", score1: 3, score2: 1, winner: "Aces" }
+        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 3, score2: 2, winner: "Ab-tect thunders" },
+        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 3, score2: 1, winner: "Comsoa D' Maroon" }
       ],
-      final: { team1: "Spikers", team2: "Aces", score1: 3, score2: 2, winner: "Spikers" },
-      champion: "Spikers",
-    },
-    {
-      sport: "Badminton",
-      qf:[
-        { team1: "Shuttlers", team2: "Smashers", score1: 2, score2: 0, winner: "Shuttlers" },
-        { team1: "Netters", team2: "Birdies", score1: 1, score2: 2, winner: "Birdies" },
-        { team1: "Rackets", team2: "Strings", score1: 2, score2: 1, winner: "Rackets" },
-        { team1: "Grips", team2: "Frames", score1: 0, score2: 2, winner: "Frames" }
-      ],
-      sf:[
-        { team1: "Shuttlers", team2: "Birdies", score1: 2, score2: 1, winner: "Shuttlers" },
-        { team1: "Rackets", team2: "Frames", score1: 1, score2: 2, winner: "Frames" }
-      ],
-      final: { team1: "Shuttlers", team2: "Frames", score1: 2, score2: 1, winner: "Shuttlers" },
-      champion: "Shuttlers",
+      final: { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 3, score2: 2, winner: "Ab-tect thunders" },
+      champion: "Ab-tect thunders",
     },
     {
       sport: "Taekwondo",
       qf:[
-        { team1: "Kickers", team2: "Strikers", score1: 15, score2: 10, winner: "Kickers" },
-        { team1: "Fists", team2: "Shields", score1: 8, score2: 12, winner: "Shields" },
-        { team1: "Belts", team2: "Forms", score1: 20, score2: 5, winner: "Belts" },
-        { team1: "Dojs", team2: "Masters", score1: 11, score2: 14, winner: "Masters" }
+        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 15, score2: 10, winner: "Ab-tect thunders" },
+        { team1: "Techtitans", team2: "Scisoa foxes", score1: 8, score2: 12, winner: "Scisoa foxes" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
       ],
       sf:[
-        { team1: "Kickers", team2: "Shields", score1: 18, score2: 16, winner: "Kickers" },
-        { team1: "Belts", team2: "Masters", score1: 12, score2: 15, winner: "Masters" }
+        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 18, score2: 16, winner: "Ab-tect thunders" },
+        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 12, score2: 15, winner: "Techtitans" }
       ],
-      final: { team1: "Kickers", team2: "Masters", score1: 22, score2: 20, winner: "Kickers" },
-      champion: "Kickers",
+      final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 22, score2: 20, winner: "Ab-tect thunders" },
+      champion: "Ab-tect thunders",
     },
     {
       sport: "Table Tennis",
       qf:[
-        { team1: "Paddlers", team2: "Spinners", score1: 3, score2: 0, winner: "Paddlers" },
-        { team1: "Loopers", team2: "Choppers", score1: 1, score2: 3, winner: "Choppers" },
-        { team1: "Servers", team2: "Receivers", score1: 3, score2: 2, winner: "Servers" },
-        { team1: "Smashers", team2: "Blockers", score1: 3, score2: 1, winner: "Smashers" }
+        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 3, score2: 0, winner: "Ab-tect thunders" },
+        { team1: "Techtitans", team2: "Scisoa foxes", score1: 1, score2: 3, winner: "Scisoa foxes" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
       ],
       sf:[
-        { team1: "Paddlers", team2: "Choppers", score1: 3, score2: 2, winner: "Paddlers" },
-        { team1: "Servers", team2: "Smashers", score1: 0, score2: 3, winner: "Smashers" }
+        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 3, score2: 2, winner: "Ab-tect thunders" },
+        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 0, score2: 3, winner: "Techtitans" }
       ],
-      final: { team1: "Paddlers", team2: "Smashers", score1: 3, score2: 1, winner: "Paddlers" },
-      champion: "Paddlers",
+      final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 3, score2: 1, winner: "Ab-tect thunders" },
+      champion: "Ab-tect thunders",
     },
     {
       sport: "Chess",
       qf:[
-        { team1: "Kings", team2: "Queens", score1: 4, score2: 0, winner: "Kings" },
-        { team1: "Bishops", team2: "Knights", score1: 2, score2: 2, winner: "Bishops" },
-        { team1: "Rooks", team2: "Pawns", score1: 3, score2: 1, winner: "Rooks" },
-        { team1: "Castles", team2: "Gambits", score1: 1, score2: 3, winner: "Gambits" }
+        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 4, score2: 0, winner: "Ab-tect thunders" },
+        { team1: "Techtitans", team2: "Scisoa foxes", score1: 2, score2: 2, winner: "Techtitans" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
       ],
       sf:[
-        { team1: "Kings", team2: "Bishops", score1: 3, score2: 1, winner: "Kings" },
-        { team1: "Rooks", team2: "Gambits", score1: 2, score2: 2, winner: "Rooks" }
+        { team1: "Ab-tect thunders", team2: "Techtitans", score1: 3, score2: 1, winner: "Ab-tect thunders" },
+        { team1: "Scisoa foxes", team2: "Comsoa D' Maroon", score1: 2, score2: 2, winner: "Scisoa foxes" }
       ],
-      final: { team1: "Kings", team2: "Rooks", score1: 3, score2: 1, winner: "Kings" },
-      champion: "Kings",
+      final: { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 3, score2: 1, winner: "Ab-tect thunders" },
+      champion: "Ab-tect thunders",
     },
     {
       sport: "Athletics",
       qf:[
-        { team1: "Sprinters", team2: "Jumpers", score1: 10, score2: 8, winner: "Sprinters" },
-        { team1: "Throwers", team2: "Hurdlers", score1: 5, score2: 12, winner: "Hurdlers" },
-        { team1: "Runners", team2: "Walkers", score1: 15, score2: 3, winner: "Runners" },
-        { team1: "Racers", team2: "Dashers", score1: 9, score2: 11, winner: "Dashers" }
+        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 10, score2: 8, winner: "Ab-tect thunders" },
+        { team1: "Techtitans", team2: "Scisoa foxes", score1: 5, score2: 12, winner: "Scisoa foxes" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
       ],
       sf:[
-        { team1: "Sprinters", team2: "Hurdlers", score1: 14, score2: 10, winner: "Sprinters" },
-        { team1: "Runners", team2: "Dashers", score1: 12, score2: 13, winner: "Dashers" }
+        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 14, score2: 10, winner: "Ab-tect thunders" },
+        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 12, score2: 13, winner: "Techtitans" }
       ],
-      final: { team1: "Sprinters", team2: "Dashers", score1: 16, score2: 14, winner: "Sprinters" },
-      champion: "Sprinters",
+      final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 16, score2: 14, winner: "Ab-tect thunders" },
+      champion: "Ab-tect thunders",
     }
   ];
   const sports = SPORTS;

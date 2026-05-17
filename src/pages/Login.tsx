@@ -37,7 +37,7 @@ export default function Login() {
               </defs>
             </svg>
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, margin: "0 0 8px", letterSpacing: -1 }}>MULTI<span style={{ color: "#38bdf8" }}>SPORTS</span></h1>
+          <h1 style={{ fontSize: 24, fontWeight: 900, margin: "0 0 8px", letterSpacing: -1 }}>SPORTS <span style={{ color: "#f97316" }}>METRICS</span></h1>
           <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0, textTransform: "uppercase", letterSpacing: 2, fontWeight: 700 }}>Staff Login</p>
         </div>
 
@@ -56,7 +56,7 @@ export default function Login() {
                 type="email" 
                 value={email} 
                 onChange={e => setEmail(e.target.value)}
-                placeholder="staff@multisports.com"
+                placeholder="staff@sportsmetrics.com"
                 required
                 style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 12, padding: "12px 12px 12px 40px", color: "var(--text-main)", fontSize: 14, outline: "none" }}
               />

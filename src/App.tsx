@@ -165,7 +165,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         .dropdown-item:hover { background: var(--border-color) !important; color: #38bdf8 !important; }
       `}</style>
       
-      {loc.pathname.startsWith("/sport/") ? (
+      {loc.pathname.startsWith("/sport/") || loc.pathname === "/dashboard" ? (
         children
       ) : (
         <>

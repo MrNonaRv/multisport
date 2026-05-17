@@ -11,7 +11,8 @@ export interface Player {
   player_name: string;
   team_id: number;
   sport: string;
-  jersey_number: number;
+  jersey_number: number | string; // allowing string for colors "Red" | "Blue"
+  gender?: "Male" | "Female";
 }
 
 export interface Match {
@@ -25,6 +26,7 @@ export interface Match {
   winner: string | null;
   status: "completed" | "live" | "upcoming";
   game_label: string;
+  category?: string; // e.g. Men's Division, Women's Division
   venue?: string;
   referee?: string;
   current_period?: string;
@@ -41,6 +43,8 @@ export interface Match {
   timeouts_team1?: number;
   timeouts_team2?: number;
   scheduled_start_time?: string;
+  t1_rounds?: number;
+  t2_rounds?: number;
 }
 
 export interface PlayerStat {
@@ -66,6 +70,8 @@ export interface PlayerStat {
   disarms?: number;
   punches?: number;
   knockdowns?: number;
+  gam_jeom?: number;
+  errors?: number;
   service_wins?: number;
   fouls?: number;
 }

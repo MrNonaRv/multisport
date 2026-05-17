@@ -88,8 +88,10 @@ const MatchCard = React.memo(({
           ) : (
             <div style={{ width: 60, height: 60, background: t1Wins ? "#10b98120" : "var(--border-color)", backdropFilter: "blur(5px)", border: `2px solid ${t1Wins ? "#10b981" : "var(--border-hover)"}`, borderRadius: "50%", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center", color: t1Wins ? "#10b981" : "var(--text-main)", fontWeight: 900, fontSize: 10 }}>{t1?.team_name.substring(0,2).toUpperCase()}</div>
           )}
+          {(m.sport === "Arnis" || m.sport === "Taekwondo") && <div style={{ fontSize: 13, fontWeight: 900, color: "#ef4444", marginBottom: 2 }}>RED</div>}
           <div style={{ fontWeight: 800, fontSize: 14, color: t1Wins ? "#10b981" : "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>{t1?.team_name} {t1Wins && <Trophy size={16} color="#10b981" />}</div>
           {isLive && m.timeouts_team1 !== undefined && <div style={{ fontSize: 11, color: "#f59e0b", marginTop: 4, fontWeight: 800 }}>Timeouts: {m.timeouts_team1}</div>}
+          {m.sport === "Arnis" && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 4, fontWeight: 900 }}>Rounds: {m.t1_rounds || 0}</div>}
           {t1Wins && <div style={{ fontSize: 10, color: "#10b981", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "#10b98120", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Winner</div>}
           {isCompleted && !t1Wins && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "var(--border-color)", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Defeated</div>}
         </div>
@@ -104,8 +106,10 @@ const MatchCard = React.memo(({
           ) : (
             <div style={{ width: 60, height: 60, background: t2Wins ? "#10b98120" : "var(--border-color)", backdropFilter: "blur(5px)", border: `2px solid ${t2Wins ? "#10b981" : "var(--border-hover)"}`, borderRadius: "50%", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center", color: t2Wins ? "#10b981" : "var(--text-main)", fontWeight: 900, fontSize: 10 }}>{t2?.team_name.substring(0,2).toUpperCase()}</div>
           )}
+          {(m.sport === "Arnis" || m.sport === "Taekwondo") && <div style={{ fontSize: 13, fontWeight: 900, color: "#3b82f6", marginBottom: 2 }}>BLUE</div>}
           <div style={{ fontWeight: 800, fontSize: 14, color: t2Wins ? "#10b981" : "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>{t2Wins && <Trophy size={16} color="#10b981" />} {t2?.team_name}</div>
           {isLive && m.timeouts_team2 !== undefined && <div style={{ fontSize: 11, color: "#f59e0b", marginTop: 4, fontWeight: 800 }}>Timeouts: {m.timeouts_team2}</div>}
+          {m.sport === "Arnis" && <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 4, fontWeight: 900 }}>Rounds: {m.t2_rounds || 0}</div>}
           {t2Wins && <div style={{ fontSize: 10, color: "#10b981", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "#10b98120", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Winner</div>}
           {isCompleted && !t2Wins && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "var(--border-color)", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Defeated</div>}
         </div>
@@ -620,6 +624,7 @@ export default function SportPage() {
                             <div key={i} style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", color: "var(--text-main)", padding: "10px 20px", borderRadius: 8, minWidth: 180, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "1px solid var(--border-color)" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: 4, marginBottom: 4 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#ef4444" }}>RED</span>}
                                   <span style={{ fontWeight: match.winner === match.team1 ? 900 : 500, color: match.winner === match.team1 ? "#10b981" : "var(--text-muted)" }}>{match.team1}</span>
                                   {match.winner === match.team1 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
                                   {match.winner !== match.team1 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
@@ -628,6 +633,7 @@ export default function SportPage() {
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
                                   <span style={{ fontWeight: match.winner === match.team2 ? 900 : 500, color: match.winner === match.team2 ? "#10b981" : "var(--text-muted)" }}>{match.team2}</span>
                                   {match.winner === match.team2 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
                                   {match.winner !== match.team2 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
@@ -644,6 +650,7 @@ export default function SportPage() {
                             <div key={i} style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", color: "var(--text-main)", padding: "10px 20px", borderRadius: 8, minWidth: 180, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "1px solid var(--border-color)" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: 4, marginBottom: 4 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#ef4444" }}>RED</span>}
                                   <span style={{ fontWeight: match.winner === match.team1 ? 900 : 500, color: match.winner === match.team1 ? "#10b981" : "var(--text-muted)" }}>{match.team1}</span>
                                   {match.winner === match.team1 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
                                   {match.winner !== match.team1 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
@@ -652,6 +659,7 @@ export default function SportPage() {
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
                                   <span style={{ fontWeight: match.winner === match.team2 ? 900 : 500, color: match.winner === match.team2 ? "#10b981" : "var(--text-muted)" }}>{match.team2}</span>
                                   {match.winner === match.team2 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
                                   {match.winner !== match.team2 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
@@ -667,6 +675,7 @@ export default function SportPage() {
                           <div style={{ background: theme.accent, color: "var(--text-main)", padding: "15px 30px", borderRadius: 12, minWidth: 220, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "2px solid var(--text-main)", textAlign: "center" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 12, fontWeight: 900, color: "#ef4444" }}>RED</span>}
                                 <span style={{ fontWeight: bracket.final.winner === bracket.final.team1 ? 900 : 500, fontSize: 18 }}>{bracket.final.team1}</span>
                                 {bracket.final.winner === bracket.final.team1 && <span style={{ fontSize: 10, background: "#10b981", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>WINNER</span>}
                                 {bracket.final.winner !== bracket.final.team1 && bracket.final.winner && <span style={{ fontSize: 10, background: "#ef4444", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>LOSER</span>}
@@ -676,6 +685,7 @@ export default function SportPage() {
                             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>VS</div>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 12, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
                                 <span style={{ fontWeight: bracket.final.winner === bracket.final.team2 ? 900 : 500, fontSize: 18 }}>{bracket.final.team2}</span>
                                 {bracket.final.winner === bracket.final.team2 && <span style={{ fontSize: 10, background: "#10b981", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>WINNER</span>}
                                 {bracket.final.winner !== bracket.final.team2 && bracket.final.winner && <span style={{ fontSize: 10, background: "#ef4444", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>LOSER</span>}
