@@ -159,12 +159,79 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMatchStatus = useCallback((matchId: number, status: "completed" | "live" | "upcoming", winner?: string | null) => {
-    setDb(prev => ({
-      ...prev,
-      matches: prev.matches.map(m => 
-        m.match_id === matchId ? { ...m, status, winner: winner !== undefined ? winner : m.winner } : m
-      )
-    }));
+    setDb(prev => {
+      const matchToUpd = prev.matches.find(m => m.match_id === matchId);
+      if (!matchToUpd) return prev;
+
+      const updatedWinner = winner !== undefined ? winner : matchToUpd.winner;
+      
+      let nextDb = {
+        ...prev,
+        matches: prev.matches.map(m => 
+          m.match_id === matchId ? { ...m, status, winner: updatedWinner } : m
+        )
+      };
+
+      if (status === "completed" && updatedWinner) {
+        const t1 = prev.teams.find(t => t.team_id === matchToUpd.team1_id)?.team_name;
+        const t2 = prev.teams.find(t => t.team_id === matchToUpd.team2_id)?.team_name;
+        const sport = matchToUpd.sport;
+        const b = nextDb.brackets.find(br => br.sport === sport);
+        
+        if (b && t1 && t2) {
+          let updatedBrackets = [...nextDb.brackets];
+          let updatedBracket = { ...b, qf: [...b.qf], sf: [...b.sf], final: { ...b.final } };
+          let bIndex = updatedBrackets.findIndex(br => br.sport === sport);
+          
+          let scoreToUse1 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t1_rounds || 0) : matchToUpd.score_team1;
+          let scoreToUse2 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t2_rounds || 0) : matchToUpd.score_team2;
+
+          let slotFound = false;
+
+          // Check QF
+          for(let i=0; i<4; i++) {
+            if ((b.qf[i].team1 === t1 && b.qf[i].team2 === t2) || (b.qf[i].team1 === t2 && b.qf[i].team2 === t1)) {
+               let isT1 = b.qf[i].team1 === t1;
+               updatedBracket.qf[i] = { ...b.qf[i], score1: isT1 ? scoreToUse1 : scoreToUse2, score2: isT1 ? scoreToUse2 : scoreToUse1, winner: updatedWinner };
+               let nextSf = Math.floor(i / 2);
+               if (i % 2 === 0) updatedBracket.sf[nextSf] = { ...updatedBracket.sf[nextSf], team1: updatedWinner };
+               else updatedBracket.sf[nextSf] = { ...updatedBracket.sf[nextSf], team2: updatedWinner };
+               slotFound = true;
+               break;
+            }
+          }
+
+          if (!slotFound) {
+            for(let i=0; i<2; i++) {
+              if ((b.sf[i].team1 === t1 && b.sf[i].team2 === t2) || (b.sf[i].team1 === t2 && b.sf[i].team2 === t1)) {
+                 let isT1 = b.sf[i].team1 === t1;
+                 updatedBracket.sf[i] = { ...b.sf[i], score1: isT1 ? scoreToUse1 : scoreToUse2, score2: isT1 ? scoreToUse2 : scoreToUse1, winner: updatedWinner };
+                 if (i === 0) updatedBracket.final = { ...updatedBracket.final, team1: updatedWinner };
+                 else updatedBracket.final = { ...updatedBracket.final, team2: updatedWinner };
+                 slotFound = true;
+                 break;
+              }
+            }
+          }
+
+          if (!slotFound) {
+            if ((b.final.team1 === t1 && b.final.team2 === t2) || (b.final.team1 === t2 && b.final.team2 === t1)) {
+               let isT1 = b.final.team1 === t1;
+               updatedBracket.final = { ...b.final, score1: isT1 ? scoreToUse1 : scoreToUse2, score2: isT1 ? scoreToUse2 : scoreToUse1, winner: updatedWinner };
+               updatedBracket.champion = updatedWinner;
+               slotFound = true;
+            }
+          }
+
+          if (slotFound) {
+             updatedBrackets[bIndex] = updatedBracket;
+             nextDb.brackets = updatedBrackets;
+          }
+        }
+      }
+
+      return nextDb;
+    });
   }, []);
 
   const updateMatchLiveState = useCallback((matchId: number, updates: Partial<Match>) => {

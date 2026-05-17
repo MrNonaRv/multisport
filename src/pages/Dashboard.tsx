@@ -822,32 +822,33 @@ export default function Dashboard() {
     if (!editingBracket) return null;
     const teamsForSport = db.teams.filter(t => t.sport === bracketSport);
 
-    const renderMatchInputs = (match: BracketMatch, round: "qf" | "sf" | "final", index: number) => (
+    const renderMatchInputs = (match: BracketMatch, round: "qf" | "sf" | "final", index: number) => {
+      // Only allow team selection for the first round of their structure, which could be qf, sf, or final depending on how many teams they have. To be safe, let's keep team selection open everywhere, but emphasize it's for initial setup.
+      return (
       <div style={{ background: "var(--panel-bg)", padding: 16, borderRadius: 12, display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--border-color)" }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <select value={match.team1} onChange={e => updateBracketMatch(round, index, "team1", e.target.value)} style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", padding: 8, borderRadius: 8, fontSize: 16, fontWeight: 700 }}>
-            <option value="" style={{ color: "#000" }}>Select Team 1</option>
+            <option value="" style={{ color: "var(--text-muted)" }}>Select Team 1</option>
             {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
           </select>
-          <input type="number" value={match.score1 || 0} onChange={e => updateBracketMatch(round, index, "score1", parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", color: "var(--text-main)", padding: 8, borderRadius: 8, textAlign: "center", fontSize: 18, fontWeight: 900 }} />
+          <div style={{ width: 60, background: "var(--bg)", border: "2px solid var(--border-color)", color: "var(--text-muted)", padding: 8, borderRadius: 8, textAlign: "center", fontSize: 18, fontWeight: 900 }}>{match.score1 || 0}</div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <select value={match.team2} onChange={e => updateBracketMatch(round, index, "team2", e.target.value)} style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", padding: 8, borderRadius: 8, fontSize: 16, fontWeight: 700 }}>
-            <option value="" style={{ color: "#000" }}>Select Team 2</option>
+            <option value="" style={{ color: "var(--text-muted)" }}>Select Team 2</option>
             {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
           </select>
-          <input type="number" value={match.score2 || 0} onChange={e => updateBracketMatch(round, index, "score2", parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", color: "var(--text-main)", padding: 8, borderRadius: 8, textAlign: "center", fontSize: 18, fontWeight: 900 }} />
+          <div style={{ width: 60, background: "var(--bg)", border: "2px solid var(--border-color)", color: "var(--text-muted)", padding: 8, borderRadius: 8, textAlign: "center", fontSize: 18, fontWeight: 900 }}>{match.score2 || 0}</div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 4 }}>
           <span style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 800 }}>Winner:</span>
-          <select value={match.winner || ""} onChange={e => updateBracketMatch(round, index, "winner", e.target.value)} style={{ flex: 1, background: "#10b981", border: "none", color: "var(--bg)", padding: 8, borderRadius: 8, fontWeight: 900, fontSize: 16 }}>
-            <option value="">None</option>
-            {match.team1 && <option value={match.team1}>{match.team1}</option>}
-            {match.team2 && <option value={match.team2}>{match.team2}</option>}
-          </select>
+          <div style={{ flex: 1, background: match.winner ? "#10b981" : "var(--bg)", color: match.winner ? "var(--bg)" : "var(--text-muted)", padding: 8, borderRadius: 8, fontWeight: 900, fontSize: 16 }}>
+            {match.winner || "TBD"}
+          </div>
         </div>
       </div>
-    );
+      );
+    };
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
@@ -886,6 +887,19 @@ export default function Dashboard() {
               <Save size={20} /> SAVE BRACKET
             </button>
           </div>
+        </div>
+
+        <div style={{ background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.3)", padding: 20, borderRadius: 12 }}>
+          <h3 style={{ margin: "0 0 12px", color: "#8b5cf6", fontSize: 18, fontWeight: 800 }}>⚙️ Semi-Automatic Progression</h3>
+          <p style={{ margin: "0 0 8px", color: "var(--text-main)", fontSize: 14, lineHeight: 1.5 }}>
+            <strong>1. Initial Setup:</strong> Select which teams face each other in Round 1 (Quarter-Finals or Semi-Finals) and hit SAVE BRACKET.
+          </p>
+          <p style={{ margin: "0 0 8px", color: "var(--text-main)", fontSize: 14, lineHeight: 1.5 }}>
+            <strong>2. Match Score Update:</strong> You don't update scores directly inside the bracket. Instead, go to the <strong>Matches</strong> tab to input stats and points while the game is ongoing.
+          </p>
+          <p style={{ margin: 0, color: "var(--text-main)", fontSize: 14, lineHeight: 1.5 }}>
+            <strong>3. Automatic Progression:</strong> Once a match is saved and a winner is determined, the system automatically advances that winning team to the next slot in the bracket!
+          </p>
         </div>
 
         <div style={{ overflowX: "auto", paddingBottom: 16 }}>
