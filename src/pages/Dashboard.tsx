@@ -1077,7 +1077,88 @@ export default function Dashboard() {
         <div style={{ background: "var(--panel-bg)", border: `1px solid var(--border-color)`, borderRadius: 16, width: "100%", maxWidth: 900, maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: 20, borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Box Score: {teamsMap[match.team1_id]?.team_name} vs {teamsMap[match.team2_id]?.team_name}</h3>
-            <button onClick={() => setBoxScoreMatch(null)} style={{ background: "transparent", border: "none", color: "var(--text-main)", fontSize: 24, cursor: "pointer" }}>&times;</button>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <button 
+                onClick={() => {
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) return;
+                  
+                  let tableHtml = "";
+                  [ { t: teamsMap[match.team1_id], p: t1Players }, { t: teamsMap[match.team2_id], p: t2Players } ].forEach(({ t, p }) => {
+                    tableHtml += `
+                      <h4 style="margin: 30px 0 10px; font-size: 18px; color: #0f172a; text-transform: uppercase;">${t?.team_name}</h4>
+                      <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 20px;">
+                        <thead>
+                          <tr style="border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding: 10px; color: #64748b; font-size: 12px; text-transform: uppercase;">Player</th>
+                            ${sportStats.map(st => `<th style="padding: 10px; color: #64748b; font-size: 12px; text-transform: uppercase; text-align: center;">${st.replace("_", " ")}</th>`).join('')}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${p.map(player => `
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                              <td style="padding: 10px; font-weight: 700; font-size: 14px;">${player.player_name} <span style="color: #94a3b8; font-size: 11px;">#${player.jersey_number}</span></td>
+                              ${sportStats.map(st => `<td style="padding: 10px; text-align: center; font-weight: 700;">${getStat(player.player_id, st)}</td>`).join('')}
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    `;
+                  });
+
+                  printWindow.document.write(`
+                    <html>
+                      <head>
+                        <title>Match Report - ${teamsMap[match.team1_id]?.team_name} vs ${teamsMap[match.team2_id]?.team_name}</title>
+                        <style>
+                          body { font-family: 'Inter', sans-serif; padding: 40px; color: #0f172a; }
+                          @media print { body { padding: 0; } }
+                        </style>
+                      </head>
+                      <body>
+                        <div style="max-width: 800px; margin: 0 auto; border: 2px solid #e2e8f0; border-radius: 16px; padding: 40px;">
+                          <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 900; text-transform: uppercase;">OFFICIAL MATCH REPORT</h1>
+                            <p style="margin: 8px 0 0; font-size: 16px; color: #64748b; font-weight: 600;">${match.sport.toUpperCase()} ${match.category ? `• ${match.category.toUpperCase()}` : ''}</p>
+                            <p style="margin: 4px 0 0; font-size: 14px; color: #64748b;">Status: ${match.status.toUpperCase()}</p>
+                          </div>
+                          
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <div style="text-align: center; flex: 1;">
+                              <div style="font-size: 20px; font-weight: 800; color: #64748b;">${teamsMap[match.team1_id]?.team_name}</div>
+                              <div style="font-size: 48px; font-weight: 900;">${match.sport !== "Basketball" ? (match.t1_rounds || 0) : match.score_team1}</div>
+                              ${match.sport !== "Basketball" ? `<div style="font-size: 14px; color: #64748b; font-weight: 700;">PTS: ${match.score_team1}</div>` : ''}
+                            </div>
+                            <div style="font-size: 24px; font-weight: 900; color: #94a3b8; padding: 0 20px;">VS</div>
+                            <div style="text-align: center; flex: 1;">
+                              <div style="font-size: 20px; font-weight: 800; color: #64748b;">${teamsMap[match.team2_id]?.team_name}</div>
+                              <div style="font-size: 48px; font-weight: 900;">${match.sport !== "Basketball" ? (match.t2_rounds || 0) : match.score_team2}</div>
+                              ${match.sport !== "Basketball" ? `<div style="font-size: 14px; color: #64748b; font-weight: 700;">PTS: ${match.score_team2}</div>` : ''}
+                            </div>
+                          </div>
+                          
+                          ${match.winner ? `<div style="text-align: center; margin-bottom: 30px; font-size: 18px; font-weight: 800; color: #10b981;">WINNER: ${match.winner.toUpperCase()}</div>` : ''}
+                          
+                          ${tableHtml}
+                          
+                          <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; font-weight: 600;">
+                            Generated by Sports Management System • ${new Date().toLocaleString()}
+                          </div>
+                        </div>
+                        <script>
+                          setTimeout(() => { window.print(); window.close(); }, 500);
+                        </script>
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                }}
+                style={{ background: "#38bdf8", border: "none", color: "#000", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}
+              >
+                🖨️ PRINT REPORT
+              </button>
+              <button onClick={() => setBoxScoreMatch(null)} style={{ background: "transparent", border: "none", color: "var(--text-main)", fontSize: 24, cursor: "pointer" }}>&times;</button>
+            </div>
           </div>
           <div style={{ padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 30 }}>
             {[ { t: teamsMap[match.team1_id], p: t1Players }, { t: teamsMap[match.team2_id], p: t2Players } ].map(({ t, p }) => (
