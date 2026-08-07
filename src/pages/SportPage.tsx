@@ -16,6 +16,7 @@ const MatchCard = React.memo(({
   user, 
   updateMatchDetails, 
   updateMatchScore,
+  updateMatchLiveState,
   setLiveControlMatch,
   onViewBoxScore
 }: { 
@@ -26,6 +27,7 @@ const MatchCard = React.memo(({
   user: User | null; 
   updateMatchDetails: (id: number, v: string, r: string, p?: string, t?: string) => void; 
   updateMatchScore: (id: number, s1: number, s2: number) => void; 
+  updateMatchLiveState: (id: number, updates: Partial<Match>) => void;
   setLiveControlMatch: (id: number) => void;
   onViewBoxScore: (id: number) => void;
 }) => {
@@ -36,6 +38,8 @@ const MatchCard = React.memo(({
   const [editTime, setEditTime] = useState(m.remaining_time || "");
   const [editScore1, setEditScore1] = useState(m.score_team1);
   const [editScore2, setEditScore2] = useState(m.score_team2);
+  const [editRounds1, setEditRounds1] = useState(m.t1_rounds || 0);
+  const [editRounds2, setEditRounds2] = useState(m.t2_rounds || 0);
 
   const [displayTime, setDisplayTime] = useState(m.remaining_time || "");
 
@@ -70,7 +74,8 @@ const MatchCard = React.memo(({
     updateMatchDetails(m.match_id, editVenue, editReferee, editPeriod, editTime);
     if (!isCompleted) {
       updateMatchScore(m.match_id, editScore1, editScore2);
-    } else if (editScore1 !== m.score_team1 || editScore2 !== m.score_team2) {
+      updateMatchLiveState(m.match_id, { t1_rounds: editRounds1, t2_rounds: editRounds2 });
+    } else if (editScore1 !== m.score_team1 || editScore2 !== m.score_team2 || editRounds1 !== m.t1_rounds || editRounds2 !== m.t2_rounds) {
       alert("Cannot edit scores for a completed match.");
     }
     setIsEditing(false);
@@ -96,12 +101,18 @@ const MatchCard = React.memo(({
           {isCompleted && !t1Wins && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6, textTransform: "uppercase", fontWeight: 900, background: "var(--border-color)", padding: "2px 8px", borderRadius: 12, display: "inline-block" }}>Defeated</div>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
-          <div style={{ fontSize: 32, fontWeight: 900, color: t1Wins ? "#10b981" : (isCompleted && !t1Wins ? "var(--text-muted)" : "var(--text-main)") }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 32, fontWeight: 900, color: t1Wins ? "#10b981" : (isCompleted && !t1Wins ? "var(--text-muted)" : "var(--text-main)") }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
+            {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team1}</div>}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
              <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.5 }}>VS</div>
              {(m.sport !== "Basketball") && <div style={{ fontSize: 10, marginTop: 4, color: "var(--text-muted)" }}>SETS</div>}
           </div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: t2Wins ? "#10b981" : (isCompleted && !t2Wins ? "var(--text-muted)" : "var(--text-main)") }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 32, fontWeight: 900, color: t2Wins ? "#10b981" : (isCompleted && !t2Wins ? "var(--text-muted)" : "var(--text-main)") }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
+            {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team2}</div>}
+          </div>
         </div>
         <div style={{ flex: 1, textAlign: "center", opacity: isCompleted && !t2Wins ? 0.5 : 1 }}>
           {t2?.logo ? (
@@ -144,7 +155,7 @@ const MatchCard = React.memo(({
                 <>
                   <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>{t1?.team_name} Score</label>
+                      <label style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>{t1?.team_name} Score (PTS)</label>
                       <input 
                         type="number" 
                         value={editScore1} 
@@ -152,8 +163,21 @@ const MatchCard = React.memo(({
                         style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-hover)", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
                       />
                     </div>
+                    {(m.sport !== "Basketball") && (
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>SETS / RNDS</label>
+                        <input 
+                          type="number" 
+                          value={editRounds1} 
+                          onChange={e => setEditRounds1(parseInt(e.target.value) || 0)} 
+                          style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #ef4444", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>{t2?.team_name} Score</label>
+                      <label style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>{t2?.team_name} Score (PTS)</label>
                       <input 
                         type="number" 
                         value={editScore2} 
@@ -161,6 +185,17 @@ const MatchCard = React.memo(({
                         style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-hover)", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
                       />
                     </div>
+                    {(m.sport !== "Basketball") && (
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>SETS / RNDS</label>
+                        <input 
+                          type="number" 
+                          value={editRounds2} 
+                          onChange={e => setEditRounds2(parseInt(e.target.value) || 0)} 
+                          style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #ef4444", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
                     <div style={{ flex: 1 }}>
@@ -240,6 +275,8 @@ const MatchCard = React.memo(({
                       setEditTime(m.remaining_time || "");
                       setEditScore1(m.score_team1);
                       setEditScore2(m.score_team2);
+                      setEditRounds1(m.t1_rounds || 0);
+                      setEditRounds2(m.t2_rounds || 0);
                     }}
                     style={{ background: "transparent", border: "1px solid var(--border-hover)", color: "var(--text-main)", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 10, textTransform: "uppercase" }}
                   >
@@ -268,11 +305,12 @@ const MatchCard = React.memo(({
 export default function SportPage() {
   const { sportName } = useParams();
   const sport = sportName ? sportName.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : "Basketball";
-  const { db, updateMatchDetails, updateMatchScore, addMatch } = useDatabase();
+  const { db, updateMatchDetails, updateMatchScore, updateMatchLiveState, addMatch } = useDatabase();
   const { user } = useAuth();
   const w = useW();
   const mob = w < 768;
   const [sec, setSec] = useState("home");
+  const [division, setDivision] = useState("Men's Division");
   const [selTeam, setSelTeam] = useState<number | null>(null);
   const [selectedPlayerModal, setSelectedPlayerModal] = useState<number | null>(null);
   const [hoveredPlayer, setHoveredPlayer] = useState<number | null>(null);
@@ -281,6 +319,7 @@ export default function SportPage() {
   const [publicBoxScoreMatch, setPublicBoxScoreMatch] = useState<number | null>(null);
 
   const loc = useLocation();
+
   useEffect(() => {
     const params = new URLSearchParams(loc.search);
     const matchId = params.get("match");
@@ -300,10 +339,16 @@ export default function SportPage() {
     scheduled_start_time: ""
   });
 
-  const tms = useMemo(() => db.teams.filter(t => t.sport === sport), [db.teams, sport]);
-  const pls = useMemo(() => db.players.filter(p => p.sport === sport), [db.players, sport]);
-  const mtc = useMemo(() => db.matches.filter(m => m.sport === sport), [db.matches, sport]);
-  const sts = useMemo(() => db.playerStats.filter(s => s.sport === sport), [db.playerStats, sport]);
+  const tms = useMemo(() => db.teams.filter(t => t.sport === sport && (!t.category || t.category === division)), [db.teams, sport, division]);
+  const pls = useMemo(() => db.players.filter(p => {
+    const tm = db.teams.find(t => t.team_id === p.team_id);
+    return p.sport === sport && (!tm?.category || tm.category === division);
+  }), [db.players, sport, db.teams, division]);
+  const mtc = useMemo(() => db.matches.filter(m => m.sport === sport && (!m.category || m.category === division)), [db.matches, sport, division]);
+  const sts = useMemo(() => db.playerStats.filter(s => {
+    const m = db.matches.find(mx => mx.match_id === s.match_id);
+    return s.sport === sport && (!m?.category || m.category === division);
+  }), [db.playerStats, sport, db.matches, division]);
 
   const teamsMap = useMemo(() => {
     const map: Record<number, any> = {};
@@ -416,9 +461,30 @@ export default function SportPage() {
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1400, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: mob ? "15px 20px" : "20px 40px" }}>
-          <div style={{ fontSize: mob ? 20 : 28, fontWeight: 900, display: "flex", alignItems: "center", gap: 10, letterSpacing: -1 }}>
-            <span style={{ fontSize: mob ? 24 : 36 }}>{theme.icon}</span> {sport.toUpperCase()} METRICS
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: mob ? "15px 20px" : "20px 40px", flexWrap: "wrap", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ fontSize: mob ? 20 : 28, fontWeight: 900, display: "flex", alignItems: "center", gap: 10, letterSpacing: -1 }}>
+              <span style={{ fontSize: mob ? 24 : 36 }}>{theme.icon}</span> {sport.toUpperCase()} METRICS
+            </div>
+            <select 
+              value={division} 
+              onChange={e => setDivision(e.target.value)}
+              style={{
+                background: "var(--panel-bg)",
+                color: "var(--text-main)",
+                border: "1px solid var(--border-color)",
+                padding: "8px 16px",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 800,
+                cursor: "pointer",
+                outline: "none"
+              }}
+            >
+              <option value="Men's Division">Men's Division</option>
+              <option value="Women's Division">Women's Division</option>
+              <option value="Mixed">Mixed / Open</option>
+            </select>
           </div>
           {!mob && (
             <div style={{ display: "flex", gap: 24, fontWeight: 800, fontSize: 13, textTransform: "uppercase" }}>
@@ -500,6 +566,7 @@ export default function SportPage() {
                     user={user} 
                     updateMatchDetails={updateMatchDetails} 
                     updateMatchScore={updateMatchScore}
+                    updateMatchLiveState={updateMatchLiveState}
                     setLiveControlMatch={setLiveControlMatch}
                     onViewBoxScore={setPublicBoxScoreMatch}
                   />
@@ -563,7 +630,7 @@ export default function SportPage() {
           {sec === "finals" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               {(() => {
-                const bracket = db.brackets.find(b => b.sport === sport);
+                const bracket = db.brackets.find(b => b.sport === sport && (!b.category || b.category === division));
                 if (!bracket) return (
                   <div style={{ textAlign: "center", padding: 100, background: "var(--border-color)", borderRadius: 16 }}>
                     <div style={{ fontSize: 64, marginBottom: 20 }}>🏆</div>
@@ -706,7 +773,7 @@ export default function SportPage() {
 
           {/* LEADERBOARDS SECTION */}
           {sec === "leaderboards" && (() => {
-            const bracket = db.brackets.find(b => b.sport === sport);
+            const bracket = db.brackets.find(b => b.sport === sport && (!b.category || b.category === division));
             const isCompleted = bracket?.champion && bracket.champion.length > 0;
             const title = isCompleted ? "FINAL TOURNAMENT STATS" : "CURRENT LEADERS (LIVE UPDATES)";
             
@@ -895,7 +962,7 @@ export default function SportPage() {
                 </div>
               </div>
 
-              {db.brackets.find(b => b.sport === sport) && (
+              {db.brackets.find(b => b.sport === sport && (!b.category || b.category === division)) && (
                 <div style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", borderRadius: 24, padding: mob ? 30 : 50, border: "1px solid var(--border-color)", textAlign: "center" }}>
                   <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 10 }}>TOURNAMENT BRACKET</h3>
                   <p style={{ opacity: 0.7, marginBottom: 30 }}>The road to the championship is heating up! View the full bracket and match results.</p>

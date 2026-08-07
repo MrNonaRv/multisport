@@ -189,12 +189,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const t1 = prev.teams.find(t => t.team_id === matchToUpd.team1_id)?.team_name;
         const t2 = prev.teams.find(t => t.team_id === matchToUpd.team2_id)?.team_name;
         const sport = matchToUpd.sport;
-        const b = nextDb.brackets.find(br => br.sport === sport);
+        const b = nextDb.brackets.find(br => br.sport === sport && br.category === matchToUpd.category);
         
         if (b && t1 && t2) {
           let updatedBrackets = [...nextDb.brackets];
           let updatedBracket = { ...b, qf: [...b.qf], sf: [...b.sf], final: { ...b.final } };
-          let bIndex = updatedBrackets.findIndex(br => br.sport === sport);
+          let bIndex = updatedBrackets.findIndex(br => br.sport === sport && br.category === matchToUpd.category);
           
           let scoreToUse1 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t1_rounds || 0) : matchToUpd.score_team1;
           let scoreToUse2 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t2_rounds || 0) : matchToUpd.score_team2;
@@ -366,9 +366,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   const updateBracket = useCallback((sport: string, bracket: Bracket) => {
     setDbAndSync(prev => {
-      const existing = prev.brackets.find(b => b.sport === sport);
+      const existing = prev.brackets.find(b => b.sport === sport && b.category === bracket.category);
       if (existing) {
-        return { ...prev, brackets: prev.brackets.map(b => b.sport === sport ? bracket : b) };
+        return { ...prev, brackets: prev.brackets.map(b => (b.sport === sport && b.category === bracket.category) ? bracket : b) };
       } else {
         return { ...prev, brackets: [...prev.brackets, bracket] };
       }

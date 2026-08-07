@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDdkUg7F-3rd028W8BbdTU9ZTki8-NESR0",
@@ -13,4 +13,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, "ai-studio-multisportstourn-d9b21812-4785-4395-9200-73f03ac81dc4");
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, "ai-studio-multisportstourn-d9b21812-4785-4395-9200-73f03ac81dc4");

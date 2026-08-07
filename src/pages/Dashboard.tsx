@@ -15,15 +15,20 @@ const DashboardMatchCard = React.memo(({
   t2, 
   isEditing, 
   s1, 
-  s2, 
+  s2,
+  r1,
+  r2,
   setS1, 
-  setS2, 
+  setS2,
+  setR1,
+  setR2,
   setEditingMatch, 
   handleSaveMatchScore, 
   handleStatusChange, 
   deleteMatch, 
   setBoxScoreMatch,
-  setLiveControlMatch
+  setLiveControlMatch,
+  userRole
 }: any) => {
   return (
     <div style={{ background: "var(--panel-bg)", border: "1px solid var(--border-color)", borderRadius: 16, padding: 20, boxShadow: "0 0 15px var(--glow-color), 0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
@@ -45,7 +50,9 @@ const DashboardMatchCard = React.memo(({
             <option value="live">Live</option>
             <option value="completed">Completed</option>
           </select>
-          <button onClick={() => { if(window.confirm('Delete match?')) deleteMatch(m.match_id); }} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}><Trash2 size={16} /></button>
+          {userRole === "ADMIN" && (
+            <button onClick={() => { if(window.confirm('Delete match?')) deleteMatch(m.match_id); }} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}><Trash2 size={16} /></button>
+          )}
         </div>
       </div>
 
@@ -57,7 +64,12 @@ const DashboardMatchCard = React.memo(({
              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8 }}>{t1?.team_name}</div>
           )}
           {isEditing ? (
-            <input type="number" value={s1} onChange={e => setS1(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              {(m.sport !== "Basketball") && (
+                <input type="number" value={r1} onChange={e => setR1(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
+              )}
+              <input type="number" value={s1} onChange={e => setS1(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
@@ -76,7 +88,12 @@ const DashboardMatchCard = React.memo(({
              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8 }}>{t2?.team_name}</div>
           )}
           {isEditing ? (
-            <input type="number" value={s2} onChange={e => setS2(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              {(m.sport !== "Basketball") && (
+                <input type="number" value={r2} onChange={e => setR2(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
+              )}
+              <input type="number" value={s2} onChange={e => setS2(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
@@ -96,7 +113,7 @@ const DashboardMatchCard = React.memo(({
           <>
             <button onClick={() => setLiveControlMatch(m.match_id)} style={{ flex: "1 1 auto", width: "100%", background: "#ef4444", color: "var(--text-main)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 6px 12px rgba(239, 68, 68, 0.3)" }}><Activity size={24} /> LIVE CONTROL</button>
             <div style={{ display: "flex", gap: 10, width: "100%" }}>
-              <button onClick={() => { setEditingMatch(m.match_id); setS1(m.score_team1); setS2(m.score_team2); }} style={{ flex: 1, background: "var(--border-color)", color: "#38bdf8", border: "none", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>Edit Score</button>
+              <button onClick={() => { setEditingMatch(m.match_id); setS1(m.score_team1); setS2(m.score_team2); setR1(m.t1_rounds || 0); setR2(m.t2_rounds || 0); }} style={{ flex: 1, background: "var(--border-color)", color: "#38bdf8", border: "none", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>Edit Score</button>
               <button onClick={() => setBoxScoreMatch(m.match_id)} style={{ flex: 1, background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.3)", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><BarChart2 size={18} /> Box Score</button>
             </div>
           </>
@@ -146,12 +163,15 @@ export default function Dashboard() {
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
   const [s1, setS1] = useState(0);
   const [s2, setS2] = useState(0);
+  const [r1, setR1] = useState(0);
+  const [r2, setR2] = useState(0);
   const [boxScoreMatch, setBoxScoreMatch] = useState<number | null>(null);
   const [liveControlMatch, setLiveControlMatch] = useState<number | null>(null);
 
   // Add Team State
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamSport, setNewTeamSport] = useState("");
+  const [newTeamCategory, setNewTeamCategory] = useState("Men's Division");
   useEffect(() => { if(!newTeamSport && db.sports.length) setNewTeamSport(db.sports[0]); }, [db.sports, newTeamSport]);
   const [newTeamCoach, setNewTeamCoach] = useState("");
   const [newTeamLogo, setNewTeamLogo] = useState("");
@@ -179,6 +199,7 @@ export default function Dashboard() {
 
   // Bracket State
   const [bracketSport, setBracketSport] = useState("");
+  const [bracketDivision, setBracketDivision] = useState("Men's Division");
   useEffect(() => { if(!bracketSport && db.sports.length) setBracketSport(db.sports[0]); }, [db.sports, bracketSport]);
   const [editingBracket, setEditingBracket] = useState<Bracket | null>(null);
 
@@ -196,19 +217,20 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    const b = db.brackets.find(b => b.sport === bracketSport);
+    const b = db.brackets.find(b => b.sport === bracketSport && (!b.category || b.category === bracketDivision));
     if (b) {
       setEditingBracket(JSON.parse(JSON.stringify(b)));
     } else {
       setEditingBracket({
         sport: bracketSport,
+        category: bracketDivision,
         qf: Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
         sf: Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
         final: { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
         champion: ""
       });
     }
-  }, [bracketSport, db.brackets]);
+  }, [bracketSport, db.brackets, bracketDivision]);
 
   if (!user) return <Navigate to="/login" />;
 
@@ -229,16 +251,26 @@ export default function Dashboard() {
 
   const handleSaveMatchScore = useCallback((matchId: number) => {
     updateMatchScore(matchId, s1, s2);
+    updateMatchLiveState(matchId, { t1_rounds: r1, t2_rounds: r2 });
     setEditingMatch(null);
-    addActivityLog(`${user?.name} updated score for match #${matchId} to ${s1}-${s2}`);
+    addActivityLog(`${user?.name} updated score for match #${matchId} to ${s1}-${s2} (Sets: ${r1}-${r2})`);
     showMsg("s", "Match score updated successfully!");
-  }, [s1, s2, updateMatchScore, addActivityLog, user]);
+  }, [s1, s2, r1, r2, updateMatchScore, updateMatchLiveState, addActivityLog, user]);
 
   const handleStatusChange = useCallback((matchId: number, status: "upcoming" | "live" | "completed", m: Match) => {
     let winner = m.winner;
     if (status === "completed") {
-      if (m.score_team1 > m.score_team2) winner = teamsMap[m.team1_id]?.team_name;
-      else if (m.score_team2 > m.score_team1) winner = teamsMap[m.team2_id]?.team_name;
+      let score1 = m.sport !== "Basketball" ? (m.t1_rounds || 0) : m.score_team1;
+      let score2 = m.sport !== "Basketball" ? (m.t2_rounds || 0) : m.score_team2;
+      
+      // If rounds are 0 for both (e.g. they only recorded score_team1 and score_team2), fallback to score
+      if (m.sport !== "Basketball" && score1 === 0 && score2 === 0) {
+        score1 = m.score_team1;
+        score2 = m.score_team2;
+      }
+
+      if (score1 > score2) winner = teamsMap[m.team1_id]?.team_name;
+      else if (score2 > score1) winner = teamsMap[m.team2_id]?.team_name;
       else winner = "Draw";
     } else {
       winner = null;
@@ -251,8 +283,8 @@ export default function Dashboard() {
   const handleAddTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim() || !newTeamCoach.trim()) return showMsg("e", "Please fill in all team fields.");
-    addTeam({ team_name: newTeamName, sport: newTeamSport, coach_name: newTeamCoach, logo: newTeamLogo });
-    addActivityLog(`${user.name} added a new team: ${newTeamName} (${newTeamSport})`);
+    addTeam({ team_name: newTeamName, sport: newTeamSport, category: newTeamCategory, coach_name: newTeamCoach, logo: newTeamLogo });
+    addActivityLog(`${user?.name} added a new team: ${newTeamName} (${newTeamSport} - ${newTeamCategory})`);
     setNewTeamName(""); setNewTeamCoach(""); setNewTeamLogo("");
     showMsg("s", "Team added successfully!");
   };
@@ -348,7 +380,7 @@ export default function Dashboard() {
   };
 
   const handleAutoGenerateBracket = () => {
-    const teamsForSport = db.teams.filter(t => t.sport === bracketSport);
+    const teamsForSport = db.teams.filter(t => t.sport === bracketSport && (!t.category || t.category === bracketDivision));
     if (teamsForSport.length < 2) {
       return showMsg("e", "At least 2 teams are needed to generate a bracket.");
     }
@@ -358,6 +390,7 @@ export default function Dashboard() {
     
     const newBracket: Bracket = {
       sport: bracketSport,
+      category: bracketDivision,
       qf: Array(4).fill(null).map((_, i) => ({
         team1: shuffled[i * 2]?.team_name || "",
         team2: shuffled[i * 2 + 1]?.team_name || "",
@@ -388,15 +421,20 @@ export default function Dashboard() {
   // --- Render Helpers ---
 
   const renderSidebar = () => {
-    const tabs = [
-      { id: "matches", label: "Matches", icon: Gamepad2, color: "#f97316" }, 
-      { id: "teams", label: "Teams", icon: Shield, color: "#3b82f6" }, 
-      { id: "players", label: "Players", icon: Users, color: "#10b981" }, 
-      { id: "referees", label: "Referees", icon: Flag, color: "#06b6d4" },
-      { id: "brackets", label: "Brackets", icon: Trophy, color: "#8b5cf6" }, 
-      { id: "system", label: "Add Sport", icon: PlusCircle, color: "#f59e0b" },
-      { id: "activity", label: "Activity Logs", icon: Activity, color: "#64748b" }
-    ].concat(user.role === "ADMIN" ? [{ id: "users", label: "Admin Users", icon: UserCog, color: "#ef4444" }] : []);
+    let tabs = [
+      { id: "matches", label: "Matches", icon: Gamepad2, color: "#f97316" }
+    ];
+    if (user.role === "ADMIN") {
+      tabs = tabs.concat([
+        { id: "teams", label: "Teams", icon: Shield, color: "#3b82f6" }, 
+        { id: "players", label: "Players", icon: Users, color: "#10b981" }, 
+        { id: "referees", label: "Referees", icon: Flag, color: "#06b6d4" },
+        { id: "brackets", label: "Brackets", icon: Trophy, color: "#8b5cf6" }, 
+        { id: "system", label: "Add Sport", icon: PlusCircle, color: "#f59e0b" },
+        { id: "activity", label: "Activity Logs", icon: Activity, color: "#64748b" },
+        { id: "users", label: "Admin Users", icon: UserCog, color: "#ef4444" }
+      ]);
+    }
 
     return (
       <>
@@ -530,7 +568,7 @@ export default function Dashboard() {
   };
 
   const renderMatchesTab = () => {
-    const teamsForSport = db.teams.filter(t => t.sport === matchSportFilter);
+    const teamsForSport = db.teams.filter(t => t.sport === matchSportFilter && (!t.category || t.category === newMatch.category));
     
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -561,13 +599,15 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          <button 
-            onClick={() => setShowAddMatchForm(!showAddMatchForm)}
-            style={{ background: showAddMatchForm ? "var(--border-color)" : "#38bdf8", color: showAddMatchForm ? "var(--text-main)" : "var(--bg)", border: "none", padding: "12px 24px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 16 }}
-          >
-            {showAddMatchForm ? <X size={20} /> : <PlusCircle size={20} />}
-            {showAddMatchForm ? "CANCEL" : "SCHEDULE MATCH"}
-          </button>
+          {user.role === "ADMIN" && (
+            <button 
+              onClick={() => setShowAddMatchForm(!showAddMatchForm)}
+              style={{ background: showAddMatchForm ? "var(--border-color)" : "#38bdf8", color: showAddMatchForm ? "var(--text-main)" : "var(--bg)", border: "none", padding: "12px 24px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 16 }}
+            >
+              {showAddMatchForm ? <X size={20} /> : <PlusCircle size={20} />}
+              {showAddMatchForm ? "CANCEL" : "SCHEDULE MATCH"}
+            </button>
+          )}
         </div>
 
         {showAddMatchForm && (
@@ -575,6 +615,18 @@ export default function Dashboard() {
             <h3 style={{ margin: "0 0 24px", fontSize: 20, fontWeight: 900 }}>Schedule New {matchSportFilter} Match</h3>
             <form onSubmit={handleScheduleMatch} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 24 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Division / Category</label>
+                  <select 
+                    value={newMatch.category || "Men's Division"} 
+                    onChange={e => setNewMatch({...newMatch, category: e.target.value})}
+                    style={{ width: "100%", padding: 12, borderRadius: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 16, fontWeight: 700 }}
+                  >
+                    <option value="Men's Division">Men's Division</option>
+                    <option value="Women's Division">Women's Division</option>
+                    <option value="Mixed">Mixed / Open</option>
+                  </select>
+                </div>
                 <div>
                   <label style={{ display: "block", fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Team 1</label>
                   <select 
@@ -618,18 +670,6 @@ export default function Dashboard() {
                     placeholder="e.g. October 25"
                     style={{ width: "100%", padding: 12, borderRadius: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 16, fontWeight: 700 }}
                   />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Division / Category</label>
-                  <select 
-                    value={newMatch.category || "Men's Division"} 
-                    onChange={e => setNewMatch({...newMatch, category: e.target.value})}
-                    style={{ width: "100%", padding: 12, borderRadius: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 16, fontWeight: 700 }}
-                  >
-                    <option value="Men's Division">Men's Division</option>
-                    <option value="Women's Division">Women's Division</option>
-                    <option value="Mixed">Mixed / Open</option>
-                  </select>
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Scheduled Start (Optional for auto-live)</label>
@@ -689,14 +729,19 @@ export default function Dashboard() {
                 isEditing={isEditing}
                 s1={isEditing ? s1 : m.score_team1}
                 s2={isEditing ? s2 : m.score_team2}
+                r1={isEditing ? r1 : (m.t1_rounds || 0)}
+                r2={isEditing ? r2 : (m.t2_rounds || 0)}
                 setS1={setS1}
                 setS2={setS2}
+                setR1={setR1}
+                setR2={setR2}
                 setEditingMatch={setEditingMatch}
                 handleSaveMatchScore={handleSaveMatchScore}
                 handleStatusChange={handleStatusChange}
                 deleteMatch={deleteMatch}
                 setBoxScoreMatch={setBoxScoreMatch}
                 setLiveControlMatch={setLiveControlMatch}
+                userRole={user.role}
               />
             );
           })}
@@ -719,6 +764,13 @@ export default function Dashboard() {
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Sport</label>
             <select value={newTeamSport} onChange={e => setNewTeamSport(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
               {db.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Division</label>
+            <select value={newTeamCategory} onChange={e => setNewTeamCategory(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
+              <option value="Men's Division" style={{ color: "#000" }}>Men's Division</option>
+              <option value="Women's Division" style={{ color: "#000" }}>Women's Division</option>
             </select>
           </div>
           <div>
@@ -821,7 +873,7 @@ export default function Dashboard() {
 
   const renderBracketsTab = () => {
     if (!editingBracket) return null;
-    const teamsForSport = db.teams.filter(t => t.sport === bracketSport);
+    const teamsForSport = db.teams.filter(t => t.sport === bracketSport && (!t.category || t.category === bracketDivision));
 
     const renderMatchInputs = (match: BracketMatch, round: "qf" | "sf" | "final", index: number) => {
       // Only allow team selection for the first round of their structure, which could be qf, sf, or final depending on how many teams they have. To be safe, let's keep team selection open everywhere, but emphasize it's for initial setup.
@@ -856,6 +908,25 @@ export default function Dashboard() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, display: "flex", alignItems: "center", gap: 16 }}><GitMerge size={32} color="#38bdf8" /> Manage Brackets</h2>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <select
+              value={bracketDivision}
+              onChange={e => setBracketDivision(e.target.value)}
+              style={{
+                background: "var(--panel-bg)",
+                color: "var(--text-main)",
+                border: "1px solid var(--border-color)",
+                padding: "8px 16px",
+                borderRadius: 20,
+                fontSize: 14,
+                fontWeight: 800,
+                cursor: "pointer",
+                outline: "none",
+                marginRight: 16
+              }}
+            >
+              <option value="Men's Division">Men's Division</option>
+              <option value="Women's Division">Women's Division</option>
+            </select>
             {db.sports.map(s => (
               <button
                 key={s}
@@ -1224,13 +1295,13 @@ export default function Dashboard() {
 
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {activeTab === "matches" && renderMatchesTab()}
-          {activeTab === "teams" && renderTeamsTab()}
-          {activeTab === "players" && renderPlayersTab()}
-          {activeTab === "referees" && renderRefereesTab()}
-          {activeTab === "brackets" && renderBracketsTab()}
-          {activeTab === "system" && renderSystemTab()}
+          {activeTab === "teams" && user.role === "ADMIN" && renderTeamsTab()}
+          {activeTab === "players" && user.role === "ADMIN" && renderPlayersTab()}
+          {activeTab === "referees" && user.role === "ADMIN" && renderRefereesTab()}
+          {activeTab === "brackets" && user.role === "ADMIN" && renderBracketsTab()}
+          {activeTab === "system" && user.role === "ADMIN" && renderSystemTab()}
           {activeTab === "users" && user.role === "ADMIN" && renderUsersTab()}
-          {activeTab === "activity" && renderActivityTab()}
+          {activeTab === "activity" && user.role === "ADMIN" && renderActivityTab()}
         </div>
 
         {renderBoxScoreModal()}

@@ -2,6 +2,7 @@ export interface Team {
   team_id: number;
   team_name: string;
   sport: string;
+  category?: string;
   coach_name: string;
   logo?: string;
 }
@@ -103,6 +104,7 @@ export interface BracketMatch {
 
 export interface Bracket {
   sport: string;
+  category?: string;
   qf: BracketMatch[];
   sf: BracketMatch[];
   final: BracketMatch;
