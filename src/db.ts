@@ -307,7 +307,7 @@ export function initDB() {
     };
   });
   const sports = SPORTS;
-  return { sports, teams, players, matches, playerStats, standings: stands, users, finalsGames, brackets, activityLogs: [], referees };
+  return { sports, teams, players, matches, playerStats, users, finalsGames, brackets, activityLogs: [], referees };
 }
 
 export function useW() {

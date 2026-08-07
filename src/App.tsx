@@ -319,21 +319,43 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MainApp() {
+  const { loading } = useDatabase();
+  
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", color: "var(--text-main)" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: 40, height: 40, border: "4px solid rgba(56, 189, 248, 0.2)", borderTop: "4px solid #38bdf8", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 20px" }} />
+          <h2 style={{ margin: 0, fontWeight: 700, fontSize: 18 }}>Loading...</h2>
+        </div>
+        <style>{`
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/sport/:sportName" element={<SportPage />} />
+          <Route path="/archives" element={<Archives />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </Layout>
+    </Router>
+  );
+}
+
 export default function App() {
   return (
     <DatabaseProvider>
       <AuthProvider>
-        <Router>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/sport/:sportName" element={<SportPage />} />
-              <Route path="/archives" element={<Archives />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-            </Routes>
-          </Layout>
-        </Router>
+        <MainApp />
       </AuthProvider>
     </DatabaseProvider>
   );

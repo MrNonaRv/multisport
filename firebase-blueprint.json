@@ -1,0 +1,102 @@
+{
+  "schema": {
+    "users": {
+      "type": "collection",
+      "description": "User accounts (Admins and Tabulators)",
+      "fields": {
+        "email": "string",
+        "name": "string",
+        "role": "string"
+      }
+    },
+    "teams": {
+      "type": "collection",
+      "description": "Participating teams",
+      "fields": {
+        "team_name": "string",
+        "sport": "string",
+        "coach_name": "string",
+        "logo": "string?"
+      }
+    },
+    "players": {
+      "type": "collection",
+      "description": "Roster of players",
+      "fields": {
+        "player_name": "string",
+        "team_id": "string",
+        "sport": "string",
+        "jersey_number": "string",
+        "gender": "string?"
+      }
+    },
+    "matches": {
+      "type": "collection",
+      "description": "Scheduled and live matches",
+      "fields": {
+        "sport": "string",
+        "team1_id": "string",
+        "team2_id": "string",
+        "match_date": "string",
+        "score_team1": "number",
+        "score_team2": "number",
+        "winner": "string?",
+        "status": "string",
+        "game_label": "string",
+        "category": "string?",
+        "venue": "string?",
+        "referee": "string?",
+        "current_period": "string?",
+        "clock_status": "string?",
+        "remaining_seconds": "number?",
+        "t1_rounds": "number?",
+        "t2_rounds": "number?"
+      }
+    },
+    "playerStats": {
+      "type": "collection",
+      "description": "Stats accumulated by players",
+      "fields": {
+        "player_id": "string",
+        "match_id": "string",
+        "sport": "string",
+        "points": "number?",
+        "rebounds": "number?",
+        "assists": "number?",
+        "steals": "number?",
+        "blocks": "number?",
+        "kills": "number?",
+        "digs": "number?",
+        "aces": "number?"
+      }
+    },
+    "brackets": {
+      "type": "collection",
+      "description": "Tournament brackets",
+      "fields": {
+        "sport": "string",
+        "qf": "array",
+        "sf": "array",
+        "final": "map",
+        "champion": "string"
+      }
+    },
+    "activityLogs": {
+      "type": "collection",
+      "description": "Activity logs",
+      "fields": {
+        "message": "string",
+        "timestamp": "string"
+      }
+    },
+    "referees": {
+      "type": "collection",
+      "description": "List of referees",
+      "fields": {
+        "name": "string",
+        "sport": "string",
+        "contact": "string?"
+      }
+    }
+  }
+}

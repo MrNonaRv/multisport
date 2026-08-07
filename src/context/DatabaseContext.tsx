@@ -1,11 +1,15 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect } from "react";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { db as firestoreDb } from "../lib/firebase";
 import { initDB } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
 const STORAGE_KEY = "multisports_db_v7";
+const FIRESTORE_DOC_ID = "data/sports_db";
 
 interface DatabaseContextType {
   db: Database;
+  loading: boolean;
   updateMatchScore: (matchId: number, team1Score: number, team2Score: number) => void;
   updateMatchDetails: (matchId: number, venue: string, referee: string, current_period?: string, remaining_time?: string) => void;
   updateMatchStatus: (matchId: number, status: "completed" | "live" | "upcoming", winner?: string | null) => void;
@@ -31,58 +35,67 @@ interface DatabaseContextType {
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<Database>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
-        if (!parsed.teams) parsed.teams = [];
-        if (!parsed.players) parsed.players = [];
-        if (!parsed.matches) parsed.matches = [];
-        if (!parsed.playerStats) parsed.playerStats = [];
-        if (!parsed.standings) parsed.standings = [];
-        if (!parsed.users) parsed.users = [];
-        if (!parsed.finalsGames) parsed.finalsGames = [];
-        if (!parsed.brackets) parsed.brackets = [];
-        parsed.brackets = parsed.brackets.map((b: any) => ({
-          ...b,
-          qf: b.qf || Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
-          sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
-        }));
-        if (!parsed.activityLogs) parsed.activityLogs = [];
-        if (!parsed.referees) parsed.referees = [];
-        return parsed;
-      } catch (e) {
-        console.error("Failed to parse saved database", e);
-      }
-    }
-    return initDB();
-  });
+  const [db, setDb] = useState<Database>(() => initDB());
+  const [loading, setLoading] = useState(true);
 
+  // Read from Firestore on mount and listen to real-time changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  }, [db]);
-
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
+    const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
+    
+    // Subscribe to changes
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
         try {
-          const newDb = JSON.parse(e.newValue);
-          setDb(newDb);
-        } catch (error) {
-          console.error("Failed to parse storage update", error);
+          const parsed = snapshot.data() as Database;
+          if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
+          if (!parsed.teams) parsed.teams = [];
+          if (!parsed.players) parsed.players = [];
+          if (!parsed.matches) parsed.matches = [];
+          if (!parsed.playerStats) parsed.playerStats = [];
+          if (!parsed.users) parsed.users = [];
+          if (!parsed.finalsGames) parsed.finalsGames = [];
+          if (!parsed.brackets) parsed.brackets = [];
+          parsed.brackets = parsed.brackets.map((b: any) => ({
+            ...b,
+            qf: b.qf || Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+            sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+          }));
+          if (!parsed.activityLogs) parsed.activityLogs = [];
+          if (!parsed.referees) parsed.referees = [];
+          setDb(parsed);
+        } catch (e) {
+          console.error("Failed to parse remote database", e);
         }
+      } else {
+        // Initialize Firestore with default DB if it doesn't exist
+        const initial = initDB();
+        setDoc(docRef, initial).catch(err => console.error("Failed to initialize Firestore", err));
+        setDb(initial);
       }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore snapshot error:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Removed localStorage sync effect and added Firestore save wrapper
+  const setDbAndSync = useCallback((updater: (prev: Database) => Database) => {
+    setDb((prev) => {
+      const nextDb = updater(prev);
+      const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
+      // Fire-and-forget sync to Firestore
+      setDoc(docRef, nextDb, { merge: false }).catch(err => console.error("Firestore sync error:", err));
+      return nextDb;
+    });
   }, []);
 
   // Poll for auto-scheduling live matches
   useEffect(() => {
     const interval = setInterval(() => {
-      setDb(prev => {
+      setDbAndSync(prev => {
         let changed = false;
         const now = new Date();
         const matches = prev.matches.map(m => {
@@ -103,7 +116,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addActivityLog = useCallback((message: string) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const newId = prev.activityLogs.length > 0 ? Math.max(...prev.activityLogs.map(l => l.id)) + 1 : 1;
       return {
         ...prev,
@@ -113,7 +126,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addSport = useCallback((sport: string) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       if (prev.sports.includes(sport)) return prev;
       return {
         ...prev,
@@ -124,7 +137,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, [addActivityLog]);
 
   const addReferee = useCallback((referee: Omit<Referee, "referee_id">) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const newId = prev.referees.length > 0 ? Math.max(...prev.referees.map(r => r.referee_id)) + 1 : 1;
       return {
         ...prev,
@@ -134,14 +147,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteReferee = useCallback((refereeId: number) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       referees: prev.referees.filter(r => r.referee_id !== refereeId)
     }));
   }, []);
 
   const updateMatchScore = useCallback((matchId: number, team1Score: number, team2Score: number) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, score_team1: team1Score, score_team2: team2Score } : m
@@ -150,7 +163,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMatchDetails = useCallback((matchId: number, venue: string, referee: string, current_period?: string, remaining_time?: string) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, venue, referee, current_period, remaining_time } : m
@@ -159,7 +172,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMatchStatus = useCallback((matchId: number, status: "completed" | "live" | "upcoming", winner?: string | null) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const matchToUpd = prev.matches.find(m => m.match_id === matchId);
       if (!matchToUpd) return prev;
 
@@ -235,7 +248,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMatchLiveState = useCallback((matchId: number, updates: Partial<Match>) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, ...updates } : m
@@ -244,7 +257,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteMatch = useCallback((matchId: number) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       matches: prev.matches.filter(m => m.match_id !== matchId),
       playerStats: prev.playerStats.filter(s => s.match_id !== matchId)
@@ -252,7 +265,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addTeam = useCallback((team: Omit<Team, "team_id">) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const newId = prev.teams.length > 0 ? Math.max(...prev.teams.map(t => t.team_id)) + 1 : 1;
       return {
         ...prev,
@@ -262,14 +275,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateTeam = useCallback((teamId: number, team: Partial<Team>) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       teams: prev.teams.map(t => t.team_id === teamId ? { ...t, ...team } : t)
     }));
   }, []);
 
   const deleteTeam = useCallback((teamId: number) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       teams: prev.teams.filter(t => t.team_id !== teamId),
       players: prev.players.filter(p => p.team_id !== teamId)
@@ -277,7 +290,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addPlayer = useCallback((player: Omit<Player, "player_id">) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const newId = prev.players.length > 0 ? Math.max(...prev.players.map(p => p.player_id)) + 1 : 1;
       return {
         ...prev,
@@ -287,14 +300,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlayer = useCallback((playerId: number, player: Partial<Player>) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       players: prev.players.map(p => p.player_id === playerId ? { ...p, ...player } : p)
     }));
   }, []);
 
   const deletePlayer = useCallback((playerId: number) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       players: prev.players.filter(p => p.player_id !== playerId),
       playerStats: prev.playerStats.filter(s => s.player_id !== playerId)
@@ -302,7 +315,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addMatch = useCallback((match: Omit<Match, "match_id">) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const newId = prev.matches.length > 0 ? Math.max(...prev.matches.map(m => m.match_id)) + 1 : 1;
       return {
         ...prev,
@@ -312,7 +325,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlayerStat = useCallback((matchId: number, playerId: number, sport: string, statKey: keyof PlayerStat, increment: number) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const existingStatIndex = prev.playerStats.findIndex(s => s.match_id === matchId && s.player_id === playerId);
       
       if (existingStatIndex >= 0) {
@@ -335,7 +348,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addUser = useCallback((user: Omit<User, "user_id">) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const newId = prev.users.length > 0 ? Math.max(...prev.users.map(u => u.user_id)) + 1 : 1;
       return {
         ...prev,
@@ -345,14 +358,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteUser = useCallback((userId: number) => {
-    setDb(prev => ({
+    setDbAndSync(prev => ({
       ...prev,
       users: prev.users.filter(u => u.user_id !== userId)
     }));
   }, []);
 
   const updateBracket = useCallback((sport: string, bracket: Bracket) => {
-    setDb(prev => {
+    setDbAndSync(prev => {
       const existing = prev.brackets.find(b => b.sport === sport);
       if (existing) {
         return { ...prev, brackets: prev.brackets.map(b => b.sport === sport ? bracket : b) };
@@ -364,6 +377,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   const contextValue = useMemo(() => ({
     db, 
+    loading,
     updateMatchScore, 
     updateMatchDetails, 
     updateMatchStatus,
@@ -386,6 +400,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     deleteReferee
   }), [
     db, 
+    loading,
     updateMatchScore, 
     updateMatchDetails, 
     updateMatchStatus,
