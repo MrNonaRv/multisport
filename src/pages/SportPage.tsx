@@ -36,10 +36,10 @@ const MatchCard = React.memo(({
   const [editReferee, setEditReferee] = useState(m.referee || "");
   const [editPeriod, setEditPeriod] = useState(m.current_period || "");
   const [editTime, setEditTime] = useState(m.remaining_time || "");
-  const [editScore1, setEditScore1] = useState(m.score_team1);
-  const [editScore2, setEditScore2] = useState(m.score_team2);
-  const [editRounds1, setEditRounds1] = useState(m.t1_rounds || 0);
-  const [editRounds2, setEditRounds2] = useState(m.t2_rounds || 0);
+  const [editScore1, setEditScore1] = useState<number | string>(m.score_team1);
+  const [editScore2, setEditScore2] = useState<number | string>(m.score_team2);
+  const [editRounds1, setEditRounds1] = useState<number | string>(m.t1_rounds || 0);
+  const [editRounds2, setEditRounds2] = useState<number | string>(m.t2_rounds || 0);
 
   const [displayTime, setDisplayTime] = useState(m.remaining_time || "");
 
@@ -71,11 +71,16 @@ const MatchCard = React.memo(({
       alert("Only admins and tabulators can edit match details.");
       return;
     }
+    const numS1 = Number(editScore1) || 0;
+    const numS2 = Number(editScore2) || 0;
+    const numR1 = Number(editRounds1) || 0;
+    const numR2 = Number(editRounds2) || 0;
+
     updateMatchDetails(m.match_id, editVenue, editReferee, editPeriod, editTime);
     if (!isCompleted) {
-      updateMatchScore(m.match_id, editScore1, editScore2);
-      updateMatchLiveState(m.match_id, { t1_rounds: editRounds1, t2_rounds: editRounds2 });
-    } else if (editScore1 !== m.score_team1 || editScore2 !== m.score_team2 || editRounds1 !== m.t1_rounds || editRounds2 !== m.t2_rounds) {
+      updateMatchScore(m.match_id, numS1, numS2);
+      updateMatchLiveState(m.match_id, { t1_rounds: numR1, t2_rounds: numR2 });
+    } else if (numS1 !== m.score_team1 || numS2 !== m.score_team2 || numR1 !== m.t1_rounds || numR2 !== m.t2_rounds) {
       alert("Cannot edit scores for a completed match.");
     }
     setIsEditing(false);
@@ -159,7 +164,7 @@ const MatchCard = React.memo(({
                       <input 
                         type="number" 
                         value={editScore1} 
-                        onChange={e => setEditScore1(parseInt(e.target.value) || 0)} 
+                        onChange={e => setEditScore1(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} 
                         style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-hover)", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
                       />
                     </div>
@@ -169,7 +174,7 @@ const MatchCard = React.memo(({
                         <input 
                           type="number" 
                           value={editRounds1} 
-                          onChange={e => setEditRounds1(parseInt(e.target.value) || 0)} 
+                          onChange={e => setEditRounds1(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} 
                           style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #ef4444", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
                         />
                       </div>
@@ -181,7 +186,7 @@ const MatchCard = React.memo(({
                       <input 
                         type="number" 
                         value={editScore2} 
-                        onChange={e => setEditScore2(parseInt(e.target.value) || 0)} 
+                        onChange={e => setEditScore2(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} 
                         style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-hover)", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
                       />
                     </div>
@@ -191,7 +196,7 @@ const MatchCard = React.memo(({
                         <input 
                           type="number" 
                           value={editRounds2} 
-                          onChange={e => setEditRounds2(parseInt(e.target.value) || 0)} 
+                          onChange={e => setEditRounds2(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} 
                           style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #ef4444", color: "var(--text-main)", padding: "6px 12px", borderRadius: 4 }}
                         />
                       </div>

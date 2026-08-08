@@ -139,11 +139,12 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
          else if (newS2 > newS1) t2_rounds += 1;
          
          addActivityLog(`${match.sport} Set/Round Won by ${newS1 > newS2 ? t1?.team_name : t2?.team_name}!`);
-         newS1 = 0;
-         newS2 = 0;
          
          if (t1_rounds >= maxRoundsToWin || t2_rounds >= maxRoundsToWin) {
              checkMatchWin = true;
+         } else {
+             newS1 = 0;
+             newS2 = 0;
          }
       }
 

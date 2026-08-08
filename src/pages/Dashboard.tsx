@@ -66,9 +66,9 @@ const DashboardMatchCard = React.memo(({
           {isEditing ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               {(m.sport !== "Basketball") && (
-                <input type="number" value={r1} onChange={e => setR1(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
+                <input type="number" value={r1} onChange={e => setR1(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
               )}
-              <input type="number" value={s1} onChange={e => setS1(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
+              <input type="number" value={s1} onChange={e => setS1(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -90,9 +90,9 @@ const DashboardMatchCard = React.memo(({
           {isEditing ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               {(m.sport !== "Basketball") && (
-                <input type="number" value={r2} onChange={e => setR2(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
+                <input type="number" value={r2} onChange={e => setR2(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
               )}
-              <input type="number" value={s2} onChange={e => setS2(parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
+              <input type="number" value={s2} onChange={e => setS2(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -161,10 +161,10 @@ export default function Dashboard() {
   const [matchSportFilter, setMatchSportFilter] = useState("");
   useEffect(() => { if(!matchSportFilter && db.sports.length) setMatchSportFilter(db.sports[0]); }, [db.sports, matchSportFilter]);
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
-  const [s1, setS1] = useState(0);
-  const [s2, setS2] = useState(0);
-  const [r1, setR1] = useState(0);
-  const [r2, setR2] = useState(0);
+  const [s1, setS1] = useState<number | string>(0);
+  const [s2, setS2] = useState<number | string>(0);
+  const [r1, setR1] = useState<number | string>(0);
+  const [r2, setR2] = useState<number | string>(0);
   const [boxScoreMatch, setBoxScoreMatch] = useState<number | null>(null);
   const [liveControlMatch, setLiveControlMatch] = useState<number | null>(null);
 
@@ -250,10 +250,15 @@ export default function Dashboard() {
   // --- Handlers ---
 
   const handleSaveMatchScore = useCallback((matchId: number) => {
-    updateMatchScore(matchId, s1, s2);
-    updateMatchLiveState(matchId, { t1_rounds: r1, t2_rounds: r2 });
+    const numS1 = Number(s1) || 0;
+    const numS2 = Number(s2) || 0;
+    const numR1 = Number(r1) || 0;
+    const numR2 = Number(r2) || 0;
+
+    updateMatchScore(matchId, numS1, numS2);
+    updateMatchLiveState(matchId, { t1_rounds: numR1, t2_rounds: numR2 });
     setEditingMatch(null);
-    addActivityLog(`${user?.name} updated score for match #${matchId} to ${s1}-${s2} (Sets: ${r1}-${r2})`);
+    addActivityLog(`${user?.name} updated score for match #${matchId} to ${numS1}-${numS2} (Sets: ${numR1}-${numR2})`);
     showMsg("s", "Match score updated successfully!");
   }, [s1, s2, r1, r2, updateMatchScore, updateMatchLiveState, addActivityLog, user]);
 

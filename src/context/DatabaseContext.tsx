@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect, useRef } from "react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db as firestoreDb } from "../lib/firebase";
 import { initDB } from "../db";
@@ -82,12 +82,25 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Removed localStorage sync effect and added Firestore save wrapper
+  const pendingSyncRef = useRef<boolean>(false);
+  const latestDbRef = useRef<Database | null>(null);
+
   const setDbAndSync = useCallback((updater: (prev: Database) => Database) => {
     setDb((prev) => {
       const nextDb = updater(prev);
-      const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
-      // Fire-and-forget sync to Firestore
-      setDoc(docRef, nextDb, { merge: false }).catch(err => console.error("Firestore sync error:", err));
+      latestDbRef.current = nextDb;
+      
+      if (!pendingSyncRef.current) {
+        pendingSyncRef.current = true;
+        Promise.resolve().then(() => {
+          pendingSyncRef.current = false;
+          if (latestDbRef.current) {
+            const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
+            setDoc(docRef, latestDbRef.current, { merge: false }).catch(err => console.error("Firestore sync error:", err));
+          }
+        });
+      }
+      
       return nextDb;
     });
   }, []);
