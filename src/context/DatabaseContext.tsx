@@ -7,6 +7,8 @@ import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, 
 const STORAGE_KEY = "multisports_db_v7";
 const FIRESTORE_DOC_ID = "data/sports_db";
 
+let quotaExceeded = false;
+
 interface DatabaseContextType {
   db: Database;
   loading: boolean;
@@ -35,7 +37,15 @@ interface DatabaseContextType {
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<Database>(() => initDB());
+  const [db, setDb] = useState<Database>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse local db", e);
+    }
+    return initDB();
+  });
   const [loading, setLoading] = useState(true);
 
   // Read from Firestore on mount and listen to real-time changes
@@ -62,14 +72,40 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           }));
           if (!parsed.activityLogs) parsed.activityLogs = [];
           if (!parsed.referees) parsed.referees = [];
+          
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+              const localDb = JSON.parse(saved) as Database;
+              if (localDb.lastUpdated && parsed.lastUpdated && localDb.lastUpdated > parsed.lastUpdated) {
+                // Local is newer. Keep it.
+                setDb(localDb);
+                setLoading(false);
+                return;
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse local db inside snapshot", e);
+          }
+          
           setDb(parsed);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
         } catch (e) {
           console.error("Failed to parse remote database", e);
         }
       } else {
         // Initialize Firestore with default DB if it doesn't exist
         const initial = initDB();
-        setDoc(docRef, initial).catch(err => console.error("Failed to initialize Firestore", err));
+        if (!quotaExceeded) {
+          setDoc(docRef, initial).catch(err => {
+            if (err.code === 'resource-exhausted') {
+              quotaExceeded = true;
+              console.warn("Firebase Database Quota Exceeded on init.");
+            } else {
+              console.error("Failed to initialize Firestore", err);
+            }
+          });
+        }
         setDb(initial);
       }
       setLoading(false);
@@ -82,24 +118,41 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Removed localStorage sync effect and added Firestore save wrapper
-  const pendingSyncRef = useRef<boolean>(false);
+  const syncTimeoutRef = useRef<any>(null);
   const latestDbRef = useRef<Database | null>(null);
 
   const setDbAndSync = useCallback((updater: (prev: Database) => Database) => {
     setDb((prev) => {
-      const nextDb = updater(prev);
+      let nextDb = updater(prev);
+      
+      if (nextDb === prev) {
+        return prev;
+      }
+      
+      nextDb = { ...nextDb, lastUpdated: Date.now() };
       latestDbRef.current = nextDb;
       
-      if (!pendingSyncRef.current) {
-        pendingSyncRef.current = true;
-        Promise.resolve().then(() => {
-          pendingSyncRef.current = false;
-          if (latestDbRef.current) {
-            const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
-            setDoc(docRef, latestDbRef.current, { merge: false }).catch(err => console.error("Firestore sync error:", err));
-          }
-        });
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDb));
+      } catch (e) {
+        console.error("Local storage error:", e);
       }
+      
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      
+      syncTimeoutRef.current = setTimeout(() => {
+        if (latestDbRef.current && !quotaExceeded) {
+          const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
+          setDoc(docRef, latestDbRef.current, { merge: false }).catch(err => {
+            if (err.code === 'resource-exhausted') {
+              quotaExceeded = true;
+              console.warn("Firebase Database Quota Exceeded. Writes disabled for this session.");
+            } else {
+              console.error("Firestore sync error:", err);
+            }
+          });
+        }
+      }, 2000);
       
       return nextDb;
     });

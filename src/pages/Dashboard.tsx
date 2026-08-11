@@ -183,6 +183,7 @@ export default function Dashboard() {
   const [newPlayerJersey, setNewPlayerJersey] = useState("");
   const [newPlayerGender, setNewPlayerGender] = useState("Male");
 
+  const [newPlayerDivision, setNewPlayerDivision] = useState("Men's Division");
   // Add User State
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -284,6 +285,8 @@ export default function Dashboard() {
     addActivityLog(`${user?.name} changed match #${matchId} status to ${status}`);
     showMsg("s", `Match status updated to ${status}`);
   }, [teamsMap, updateMatchStatus, addActivityLog, user]);
+
+  if (!user) return <Navigate to="/login" />;
 
   const handleAddTeam = (e: React.FormEvent) => {
     e.preventDefault();
@@ -833,10 +836,18 @@ export default function Dashboard() {
             </select>
           </div>
           <div>
+            <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Division</label>
+            <select value={newPlayerDivision} onChange={e => { setNewPlayerDivision(e.target.value); setNewPlayerTeam(""); }} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
+              <option value="Men's Division" style={{ color: "#000" }}>Men's Division</option>
+              <option value="Women's Division" style={{ color: "#000" }}>Women's Division</option>
+              <option value="Mixed" style={{ color: "#000" }}>Mixed</option>
+            </select>
+          </div>
+          <div>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Select Team</label>
             <select value={newPlayerTeam} onChange={e => setNewPlayerTeam(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
               <option value="" disabled style={{ color: "#000" }}>Select a team...</option>
-              {db.teams.map(t => <option key={t.team_id} value={t.team_id} style={{ color: "#000" }}>{t.team_name} ({t.sport})</option>)}
+              {db.teams.filter(t => !t.category || t.category === newPlayerDivision).map(t => <option key={t.team_id} value={t.team_id} style={{ color: "#000" }}>{t.team_name} ({t.sport})</option>)}
             </select>
           </div>
           <div>
@@ -866,7 +877,7 @@ export default function Dashboard() {
             <div key={p.player_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel-bg)", padding: 20, borderRadius: 16, border: "1px solid var(--border-color)" }}>
               <div>
                 <div style={{ fontWeight: 900, fontSize: 18 }}>{p.player_name} <span style={{ color: "#38bdf8", fontSize: 16, marginLeft: 8 }}>#{p.jersey_number}</span></div>
-                <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{teamsMap[p.team_id]?.team_name} • {p.sport}</div>
+                <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{teamsMap[p.team_id]?.team_name} • {p.sport} • {teamsMap[p.team_id]?.category || "N/A"}</div>
               </div>
               <button onClick={() => { if(window.confirm('Delete player?')) deletePlayer(p.player_id); }} style={{ background: "rgba(239, 68, 68, 0.1)", border: "none", color: "#ef4444", cursor: "pointer", padding: 12, borderRadius: 12 }}><Trash2 size={24} /></button>
             </div>
@@ -1220,8 +1231,8 @@ export default function Dashboard() {
             </div>
           </div>
           <div style={{ padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 30 }}>
-            {[ { t: teamsMap[match.team1_id], p: t1Players }, { t: teamsMap[match.team2_id], p: t2Players } ].map(({ t, p }) => (
-              <div key={t?.team_id}>
+            {[ { t: teamsMap[match.team1_id], p: t1Players, id: "t1" }, { t: teamsMap[match.team2_id], p: t2Players, id: "t2" } ].map(({ t, p, id }) => (
+              <div key={id}>
                 <h4 style={{ margin: "0 0 16px", fontSize: 18, color: "#38bdf8" }}>{t?.team_name}</h4>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
@@ -1256,7 +1267,6 @@ export default function Dashboard() {
       </div>
     );
   };
-  if (!user) return <Navigate to="/login" />;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", position: "relative", zIndex: 1, flexDirection: "row" }}>

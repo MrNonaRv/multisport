@@ -135,4 +135,5 @@ export interface Database {
   brackets: Bracket[];
   activityLogs: ActivityLog[];
   referees: Referee[];
+  lastUpdated?: number;
 }
