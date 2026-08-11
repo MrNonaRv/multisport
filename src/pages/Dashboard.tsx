@@ -140,6 +140,7 @@ export default function Dashboard() {
     deleteUser,
     addActivityLog,
     updateBracket,
+    updateMatchLiveState,
     addSport,
     addReferee,
     deleteReferee
@@ -232,7 +233,6 @@ export default function Dashboard() {
     }
   }, [bracketSport, db.brackets, bracketDivision]);
 
-  if (!user) return <Navigate to="/login" />;
 
   const showMsg = (type: "s" | "e", text: string) => {
     setMsg({ t: type, m: text });
@@ -302,7 +302,7 @@ export default function Dashboard() {
     if (!team) return;
     const jerseyValue = (team.sport === "Taekwondo" || team.sport === "Arnis") ? newPlayerJersey : parseInt(newPlayerJersey);
     addPlayer({ player_name: newPlayerName, team_id: teamId, sport: team.sport, jersey_number: jerseyValue, gender: newPlayerGender as any });
-    addActivityLog(`${user.name} added player ${newPlayerName} to team ${team.team_name}`);
+    addActivityLog(`${user?.name} added player ${newPlayerName} to team ${team.team_name}`);
     setNewPlayerName(""); setNewPlayerJersey("");
     showMsg("s", "Player added successfully!");
   };
@@ -311,7 +311,7 @@ export default function Dashboard() {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return showMsg("e", "Please fill in all user fields.");
     addUser({ name: newUserName, email: newUserEmail, password: newUserPassword, role: newUserRole });
-    addActivityLog(`${user.name} created a new ${newUserRole} user: ${newUserName}`);
+    addActivityLog(`${user?.name} created a new ${newUserRole} user: ${newUserName}`);
     setNewUserName(""); setNewUserEmail(""); setNewUserPassword("");
     showMsg("s", "User added successfully!");
   };
@@ -359,7 +359,7 @@ export default function Dashboard() {
       scheduled_start_time: newMatch.scheduled_start_time
     });
     
-    addActivityLog(`${user.name} scheduled a new match: ${teamsMap[parseInt(newMatch.team1_id)]?.team_name} vs ${teamsMap[parseInt(newMatch.team2_id)]?.team_name}`);
+    addActivityLog(`${user?.name} scheduled a new match: ${teamsMap[parseInt(newMatch.team1_id)]?.team_name} vs ${teamsMap[parseInt(newMatch.team2_id)]?.team_name}`);
     setShowAddMatchForm(false);
     setNewMatch({ team1_id: "", team2_id: "", match_date: "", game_label: "", venue: "", referee: "", category: "Men's Division", scheduled_start_time: "" });
     showMsg("s", "Match scheduled successfully!");
@@ -373,13 +373,13 @@ export default function Dashboard() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    addActivityLog(`${user.name} exported database to JSON`);
+    addActivityLog(`${user?.name} exported database to JSON`);
   };
 
   const handleSaveBracket = () => {
     if (editingBracket) {
       updateBracket(bracketSport, editingBracket);
-      addActivityLog(`${user.name} updated the bracket for ${bracketSport}`);
+      addActivityLog(`${user?.name} updated the bracket for ${bracketSport}`);
       showMsg("s", "Bracket saved successfully!");
     }
   };
@@ -429,7 +429,7 @@ export default function Dashboard() {
     let tabs = [
       { id: "matches", label: "Matches", icon: Gamepad2, color: "#f97316" }
     ];
-    if (user.role === "ADMIN") {
+    if (user?.role === "ADMIN") {
       tabs = tabs.concat([
         { id: "teams", label: "Teams", icon: Shield, color: "#3b82f6" }, 
         { id: "players", label: "Players", icon: Users, color: "#10b981" }, 
@@ -544,12 +544,12 @@ export default function Dashboard() {
               marginBottom: isSidebarOpen ? 16 : 0
             }}>
               <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#3b82f6", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: 16, flexShrink: 0 }}>
-                {user.name.charAt(0)}
+                {user?.name.charAt(0)}
               </div>
               {isSidebarOpen && (
                 <div style={{ overflow: "hidden" }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{user.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{user.role}</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{user?.name}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{user?.role}</div>
                 </div>
               )}
             </div>
@@ -604,7 +604,7 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          {user.role === "ADMIN" && (
+          {user?.role === "ADMIN" && (
             <button 
               onClick={() => setShowAddMatchForm(!showAddMatchForm)}
               style={{ background: showAddMatchForm ? "var(--border-color)" : "#38bdf8", color: showAddMatchForm ? "var(--text-main)" : "var(--bg)", border: "none", padding: "12px 24px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 16 }}
@@ -746,7 +746,7 @@ export default function Dashboard() {
                 deleteMatch={deleteMatch}
                 setBoxScoreMatch={setBoxScoreMatch}
                 setLiveControlMatch={setLiveControlMatch}
-                userRole={user.role}
+                userRole={user?.role}
               />
             );
           })}
@@ -1039,7 +1039,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{u.email}</div>
               </div>
-              {u.user_id !== user.user_id && (
+              {u.user_id !== user?.user_id && (
                 <button onClick={() => { if(window.confirm('Delete user?')) deleteUser(u.user_id); }} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}><Trash2 size={18} /></button>
               )}
             </div>
@@ -1256,6 +1256,7 @@ export default function Dashboard() {
       </div>
     );
   };
+  if (!user) return <Navigate to="/login" />;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", position: "relative", zIndex: 1, flexDirection: "row" }}>
@@ -1300,13 +1301,13 @@ export default function Dashboard() {
 
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {activeTab === "matches" && renderMatchesTab()}
-          {activeTab === "teams" && user.role === "ADMIN" && renderTeamsTab()}
-          {activeTab === "players" && user.role === "ADMIN" && renderPlayersTab()}
-          {activeTab === "referees" && user.role === "ADMIN" && renderRefereesTab()}
-          {activeTab === "brackets" && user.role === "ADMIN" && renderBracketsTab()}
-          {activeTab === "system" && user.role === "ADMIN" && renderSystemTab()}
-          {activeTab === "users" && user.role === "ADMIN" && renderUsersTab()}
-          {activeTab === "activity" && user.role === "ADMIN" && renderActivityTab()}
+          {activeTab === "teams" && user?.role === "ADMIN" && renderTeamsTab()}
+          {activeTab === "players" && user?.role === "ADMIN" && renderPlayersTab()}
+          {activeTab === "referees" && user?.role === "ADMIN" && renderRefereesTab()}
+          {activeTab === "brackets" && user?.role === "ADMIN" && renderBracketsTab()}
+          {activeTab === "system" && user?.role === "ADMIN" && renderSystemTab()}
+          {activeTab === "users" && user?.role === "ADMIN" && renderUsersTab()}
+          {activeTab === "activity" && user?.role === "ADMIN" && renderActivityTab()}
         </div>
 
         {renderBoxScoreModal()}

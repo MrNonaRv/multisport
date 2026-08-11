@@ -58,6 +58,24 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const { user } = useAuth();
   
   const match = db.matches.find(m => m.match_id === matchId);
+  const [period, setPeriod] = useState(match?.current_period || "");
+  const [time, setTime] = useState(match?.remaining_time || "");
+
+  useEffect(() => {
+    let interval: any;
+    if (match?.clock_status === "running" && match?.last_clock_update !== undefined && match?.remaining_seconds !== undefined) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - match?.last_clock_update!) / 1000);
+        let currentRemaining = match?.remaining_seconds! - elapsed;
+        if (currentRemaining < 0) currentRemaining = 0;
+        
+        const m = Math.floor(currentRemaining / 60);
+        const s = currentRemaining % 60;
+        setTime(`${m}:${s.toString().padStart(2, "0")}`);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [match?.clock_status, match?.last_clock_update, match?.remaining_seconds]);
   if (!match) return null;
 
   const t1 = db.teams.find(t => t.team_id === match.team1_id);
@@ -173,24 +191,6 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
     addActivityLog(`${user?.name} recorded ${action.label} for ${player.player_name} (${isTeam1 ? t1?.team_name : t2?.team_name})`);
   };
 
-  const [period, setPeriod] = useState(match.current_period || "");
-  const [time, setTime] = useState(match.remaining_time || "");
-
-  useEffect(() => {
-    let interval: any;
-    if (match.clock_status === "running" && match.last_clock_update !== undefined && match.remaining_seconds !== undefined) {
-      interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - match.last_clock_update!) / 1000);
-        let currentRemaining = match.remaining_seconds! - elapsed;
-        if (currentRemaining < 0) currentRemaining = 0;
-        
-        const m = Math.floor(currentRemaining / 60);
-        const s = currentRemaining % 60;
-        setTime(`${m}:${s.toString().padStart(2, "0")}`);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [match.clock_status, match.last_clock_update, match.remaining_seconds]);
 
   const handleUpdateClock = () => {
     updateMatchDetails(match.match_id, match.venue || "", match.referee || "", period, time);
