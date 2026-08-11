@@ -60,6 +60,10 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const match = db.matches.find(m => m.match_id === matchId);
   const [period, setPeriod] = useState(match?.current_period || "");
   const [time, setTime] = useState(match?.remaining_time || "");
+  
+  // Track actions for undo
+  const [actionHistory, setActionHistory] = useState<any[]>([]);
+  const [showActivityLog, setShowActivityLog] = useState(false);
 
   useEffect(() => {
     let interval: any;
@@ -90,8 +94,24 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const actions = QUICK_ACTIONS[match.sport] || [{ label: "+1 Point", stat: "points", pts: 1, inc: 1 }];
 
   const handleQuickAction = (player: Player, action: any, isTeam1: boolean) => {
+    // Save history for undo
+    setActionHistory(prev => [...prev, {
+      playerId: player.player_id,
+      stat: action.stat,
+      inc: action.inc,
+      oldS1: match.score_team1,
+      oldS2: match.score_team2,
+      oldR1: match.t1_rounds || 0,
+      oldR2: match.t2_rounds || 0,
+      oldStatus: match.status,
+      oldWinner: match.winner || null,
+      oldClockStatus: match.clock_status || "paused",
+      oldRecentAction: match.recent_action || null
+    }]);
+
     // Update player stat
     updatePlayerStat(match.match_id, player.player_id, match.sport, action.stat as any, action.inc);
+
     
     // Check for special Gam-jeom rule (Taekwondo)
     let extraPointsT1 = 0;
@@ -191,6 +211,25 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
     addActivityLog(`${user?.name} recorded ${action.label} for ${player.player_name} (${isTeam1 ? t1?.team_name : t2?.team_name})`);
   };
 
+
+  const handleUndo = () => {
+    if (actionHistory.length === 0) return;
+    const lastAction = actionHistory[actionHistory.length - 1];
+    
+    updatePlayerStat(match.match_id, lastAction.playerId, match.sport, lastAction.stat, -lastAction.inc);
+    updateMatchScore(match.match_id, lastAction.oldS1, lastAction.oldS2);
+    updateMatchLiveState(match.match_id, {
+      t1_rounds: lastAction.oldR1,
+      t2_rounds: lastAction.oldR2,
+      clock_status: lastAction.oldClockStatus,
+      recent_action: lastAction.oldRecentAction
+    });
+    if (lastAction.oldStatus !== match.status) {
+      updateMatchStatus(match.match_id, lastAction.oldStatus as any, lastAction.oldWinner);
+    }
+    setActionHistory(prev => prev.slice(0, -1));
+    addActivityLog(`${user?.name} undid last action`);
+  };
 
   const handleUpdateClock = () => {
     updateMatchDetails(match.match_id, match.venue || "", match.referee || "", period, time);
@@ -496,33 +535,53 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
           </div>
           
         </div>
-      </div>
-
+                </div>
       {/* Bottom Footer Area */}
-      <div style={{ background: "white", padding: "16px 24px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ position: "relative", background: "white", padding: "16px 24px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          
+          {showActivityLog && (
+            <div style={{ position: "absolute", bottom: "100%", right: "24px", marginBottom: "8px", width: "320px", background: "white", borderRadius: "12px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)", border: "1px solid #e2e8f0", zIndex: 10, display: "flex", flexDirection: "column", maxHeight: "300px" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontWeight: "600", fontSize: "13px", color: "#0f172a" }}>Activity Log</div>
+              <div style={{ padding: "8px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "2px" }}>
+                {db.activityLogs.filter(log => log.message.includes(match.sport)).slice().reverse().slice(0, 15).map((log, i) => (
+                  <div key={i} style={{ padding: "8px", fontSize: "12px", color: "#475569", borderBottom: i < 14 ? "1px solid #f8fafc" : "none" }}>
+                    <span style={{ color: "#94a3b8", fontSize: "10px", marginRight: "8px" }}>{new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    {log.message}
+                  </div>
+                ))}
+                {db.activityLogs.filter(log => log.message.includes(match.sport)).length === 0 && (
+                  <div style={{ padding: "16px", textAlign: "center", color: "#94a3b8", fontSize: "12px" }}>No recent activity for this sport.</div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-            <button style={{ background: "#ec4899", color: "white", padding: "8px 24px", borderRadius: "100px", fontWeight: "600", border: "none", fontSize: "11px", cursor: "pointer", display: "flex", gap: "8px", alignItems: "center", letterSpacing: "0.5px" }}>
+            <button 
+              onClick={handleUndo}
+              disabled={actionHistory.length === 0}
+              style={{ background: actionHistory.length > 0 ? "#ec4899" : "#f1f5f9", color: actionHistory.length > 0 ? "white" : "#94a3b8", padding: "8px 24px", borderRadius: "100px", fontWeight: "600", border: "none", fontSize: "11px", cursor: actionHistory.length > 0 ? "pointer" : "not-allowed", display: "flex", gap: "8px", alignItems: "center", letterSpacing: "0.5px", transition: "all 0.2s" }}
+            >
                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
                UNDO LAST ACTION
             </button>
             <div style={{ background: "#f8fafc", padding: "8px 16px", borderRadius: "100px", fontSize: "11px", fontWeight: "600", color: "#475569", display: "flex", alignItems: "center", gap: "8px", border: "1px solid #e2e8f0" }}>
-              <span style={{ width: 6, height: 6, background: "#1e293b", borderRadius: "50%" }}></span>
+              <span style={{ width: 6, height: 6, background: match.clock_status === "paused" ? "#1e293b" : "#22c55e", borderRadius: "50%" }}></span>
               {match.clock_status === "paused" ? "MATCH PAUSED" : "CLOCK RUNNING"}
             </div>
           </div>
           
           <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "8px 16px", borderRadius: "100px", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ width: 6, height: 6, background: "#16a34a", borderRadius: "50%" }}></span>
+              <span style={{ width: 6, height: 6, background: "#16a34a", borderRadius: "50%", animation: "pulse 2s infinite" }}></span>
               LIVE BROADCAST ACTIVE
             </div>
-            <button style={{ background: "transparent", color: "#3b82f6", padding: "8px 16px", fontSize: "11px", fontWeight: "600", border: "none", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", letterSpacing: "0.5px" }}>
+            <button onClick={() => setShowActivityLog(!showActivityLog)} style={{ background: showActivityLog ? "#eff6ff" : "transparent", color: "#3b82f6", padding: "8px 16px", borderRadius: "100px", fontSize: "11px", fontWeight: "600", border: "none", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", letterSpacing: "0.5px", transition: "all 0.2s" }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               VIEW ACTIVITY LOG
             </button>
           </div>
       </div>
-
     </div>
   );
 }
