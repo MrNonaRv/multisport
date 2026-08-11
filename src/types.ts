@@ -46,6 +46,7 @@ export interface Match {
   scheduled_start_time?: string;
   t1_rounds?: number;
   t2_rounds?: number;
+  mvp_id?: number;
 }
 
 export interface PlayerStat {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect, useRef } from "react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db as firestoreDb } from "../lib/firebase";
-import { initDB } from "../db";
+import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
 const STORAGE_KEY = "multisports_db_v7";
@@ -245,11 +245,25 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       const updatedWinner = winner !== undefined ? winner : matchToUpd.winner;
       
       let nextDb = {
-        ...prev,
-        matches: prev.matches.map(m => 
-          m.match_id === matchId ? { ...m, status, winner: updatedWinner } : m
-        )
+        ...prev
       };
+      
+      // Calculate MVP if completed
+      let mvp_id = matchToUpd.mvp_id;
+      if (status === "completed") {
+        const sportStatsKeys = (S_STATS as any)[matchToUpd.sport] || ["points"];
+        const primaryStat = sportStatsKeys[0];
+        
+        const matchStats = prev.playerStats.filter(s => s.match_id === matchId);
+        if (matchStats.length > 0) {
+          const topStat = [...matchStats].sort((a, b) => ((b as any)[primaryStat] || 0) - ((a as any)[primaryStat] || 0))[0];
+          mvp_id = topStat.player_id;
+        }
+      }
+
+      nextDb.matches = prev.matches.map(m => 
+        m.match_id === matchId ? { ...m, status, winner: updatedWinner, mvp_id } : m
+      );
 
       if (status === "completed" && updatedWinner) {
         const t1 = prev.teams.find(t => t.team_id === matchToUpd.team1_id)?.team_name;

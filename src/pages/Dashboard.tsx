@@ -1155,7 +1155,19 @@ export default function Dashboard() {
     const t2Players = db.players.filter(p => p.team_id === match.team2_id && (!isMens || p.gender === "Male") && (!isWomens || p.gender === "Female"));
     const sportStats = S_STATS[match.sport as keyof typeof S_STATS] || ["points"];
 
-    const getStat = (playerId: number, statKey: string) => {
+    
+    const mvpIdToUse = match.mvp_id || (match.status === "completed" ? (() => {
+        const matchStats = db.playerStats.filter(s => s.match_id === match.match_id);
+        if (matchStats.length > 0) {
+           return [...matchStats].sort((a, b) => ((b as any)[sportStats[0]] || 0) - ((a as any)[sportStats[0]] || 0))[0]?.player_id;
+        }
+        return null;
+    })() : null);
+    
+    const mvpPlayer = mvpIdToUse ? db.players.find(p => p.player_id === mvpIdToUse) : null;
+    const mvpTeam = mvpPlayer && false ? teamsMap[mvpPlayer.team_id] : (mvpPlayer ? teamsMap[mvpPlayer.team_id] : null);
+  
+const getStat = (playerId: number, statKey: string) => {
       const stat = db.playerStats.find(s => s.match_id === match.match_id && s.player_id === playerId);
       return stat ? (stat as any)[statKey] || 0 : 0;
     };
@@ -1182,8 +1194,8 @@ export default function Dashboard() {
                         <tbody>
                           ${p.map(player => `
                             <tr style="border-bottom: 1px solid #e2e8f0;">
-                              <td style="padding: 10px; font-weight: 700; font-size: 14px;">${player.player_name} <span style="color: #94a3b8; font-size: 11px;">#${player.jersey_number}</span></td>
-                              ${sportStats.map(st => `<td style="padding: 10px; text-align: center; font-weight: 700;">${getStat(player.player_id, st)}</td>`).join('')}
+                              <td style="padding: 6px 8px; font-weight: 700; font-size: 12px;">${player.player_name} <span style="color: #94a3b8; font-size: 11px;">#${player.jersey_number}</span></td>
+                              ${sportStats.map(st => `<td style="padding: 6px 8px; text-align: center; font-weight: 700; font-size: 12px;">${getStat(player.player_id, st)}</td>`).join('')}
                             </tr>
                           `).join('')}
                         </tbody>
@@ -1192,28 +1204,41 @@ export default function Dashboard() {
                   });
 
                   printHtml(`
-                    <div style="max-width: 800px; margin: 0 auto; border: 2px solid #e2e8f0; border-radius: 16px; padding: 40px;">
-                      <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-                        <h1 style="margin: 0; font-size: 28px; font-weight: 900; text-transform: uppercase;">OFFICIAL MATCH REPORT</h1>
-                        <p style="margin: 8px 0 0; font-size: 16px; color: #64748b; font-weight: 600;">${match.sport.toUpperCase()} ${match.category ? `• ${match.category.toUpperCase()}` : ''}</p>
+                    <div style="max-width: 800px; margin: 0 auto; border: 2px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+                      <div style="text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e2e8f0;">
+                        <h1 style="margin: 0; font-size: 22px; font-weight: 900; text-transform: uppercase;">OFFICIAL MATCH REPORT</h1>
+                        <p style="margin: 8px 0 0; font-size: 13px; color: #64748b; font-weight: 600;">${match.sport.toUpperCase()} ${match.category ? `• ${match.category.toUpperCase()}` : ''}</p>
                         <p style="margin: 4px 0 0; font-size: 14px; color: #64748b;">Status: ${match.status.toUpperCase()}</p>
                       </div>
                       
-                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #f8fafc; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
                         <div style="text-align: center; flex: 1;">
-                          <div style="font-size: 20px; font-weight: 800; color: #64748b;">${teamsMap[match.team1_id]?.team_name}</div>
-                          <div style="font-size: 48px; font-weight: 900;">${match.sport !== "Basketball" ? (match.t1_rounds || 0) : match.score_team1}</div>
+                          <div style="font-size: 16px; font-weight: 800; color: #64748b;">${teamsMap[match.team1_id]?.team_name}</div>
+                          <div style="font-size: 32px; font-weight: 900;">${match.sport !== "Basketball" ? (match.t1_rounds || 0) : match.score_team1}</div>
                           ${match.sport !== "Basketball" ? `<div style="font-size: 14px; color: #64748b; font-weight: 700;">PTS: ${match.score_team1}</div>` : ''}
                         </div>
-                        <div style="font-size: 24px; font-weight: 900; color: #94a3b8; padding: 0 20px;">VS</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #94a3b8; padding: 0 16px;">VS</div>
                         <div style="text-align: center; flex: 1;">
-                          <div style="font-size: 20px; font-weight: 800; color: #64748b;">${teamsMap[match.team2_id]?.team_name}</div>
-                          <div style="font-size: 48px; font-weight: 900;">${match.sport !== "Basketball" ? (match.t2_rounds || 0) : match.score_team2}</div>
+                          <div style="font-size: 16px; font-weight: 800; color: #64748b;">${teamsMap[match.team2_id]?.team_name}</div>
+                          <div style="font-size: 32px; font-weight: 900;">${match.sport !== "Basketball" ? (match.t2_rounds || 0) : match.score_team2}</div>
                           ${match.sport !== "Basketball" ? `<div style="font-size: 14px; color: #64748b; font-weight: 700;">PTS: ${match.score_team2}</div>` : ''}
                         </div>
                       </div>
                       
-                      ${match.winner ? `<div style="text-align: center; margin-bottom: 30px; font-size: 18px; font-weight: 800; color: #10b981;">WINNER: ${match.winner.toUpperCase()}</div>` : ''}
+                      ${match.winner ? `<div style="text-align: center; margin-bottom: 20px; font-size: 18px; font-weight: 800; color: #10b981;">WINNER: ${match.winner.toUpperCase()}</div>` : ''}
+                            ${mvpPlayer ? `
+                              <div style="margin-bottom: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 16px;">
+                                <div style="width: 50px; height: 50px; border-radius: 50%; background: #f59e0b; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900;">
+                                  ${mvpPlayer.player_name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div style="font-size: 11px; font-weight: 800; color: #d97706; text-transform: uppercase;">Match MVP</div>
+                                  <div style="font-size: 18px; font-weight: 900; color: #92400e;">${mvpPlayer.player_name}</div>
+                                  <div style="font-size: 12px; font-weight: 700; color: #b45309;">${mvpTeam?.team_name} • No. ${mvpPlayer.jersey_number}</div>
+                                </div>
+                              </div>
+                            ` : ''}
+  
                       
                       ${tableHtml}
                       
@@ -1231,6 +1256,19 @@ export default function Dashboard() {
             </div>
           </div>
           <div style={{ padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 30 }}>
+            {mvpPlayer && (
+              <div style={{ background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)", padding: 20, borderRadius: 12, display: "flex", alignItems: "center", gap: 20, color: "#fff", boxShadow: "0 10px 15px -3px rgba(245, 158, 11, 0.3)" }}>
+                <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#fff", color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900 }}>
+                  {mvpPlayer.player_name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, opacity: 0.9 }}>Match MVP</div>
+                  <div style={{ fontSize: 24, fontWeight: 900 }}>{mvpPlayer.player_name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.9 }}>{mvpTeam?.team_name} • No. {mvpPlayer.jersey_number}</div>
+                </div>
+              </div>
+            )}
+    
             {[ { t: teamsMap[match.team1_id], p: t1Players, id: "t1" }, { t: teamsMap[match.team2_id], p: t2Players, id: "t2" } ].map(({ t, p, id }) => (
               <div key={id}>
                 <h4 style={{ margin: "0 0 16px", fontSize: 18, color: "#38bdf8" }}>{t?.team_name}</h4>
