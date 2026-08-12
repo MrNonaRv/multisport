@@ -258,10 +258,17 @@ export default function Dashboard() {
 
     updateMatchScore(matchId, numS1, numS2);
     updateMatchLiveState(matchId, { t1_rounds: numR1, t2_rounds: numR2 });
+    
+    // Auto-recalculate winner if match is completed
+    const match = db.matches.find(m => m.match_id === matchId);
+    if (match && match.status === "completed") {
+      updateMatchStatus(matchId, "completed", null);
+    }
+    
     setEditingMatch(null);
     addActivityLog(`${user?.name} updated score for match #${matchId} to ${numS1}-${numS2} (Sets: ${numR1}-${numR2})`);
     showMsg("s", "Match score updated successfully!");
-  }, [s1, s2, r1, r2, updateMatchScore, updateMatchLiveState, addActivityLog, user]);
+  }, [db.matches, s1, s2, r1, r2, updateMatchScore, updateMatchLiveState, updateMatchStatus, addActivityLog, user]);
 
   const handleStatusChange = useCallback((matchId: number, status: "upcoming" | "live" | "completed", m: Match) => {
     let winner = m.winner;
@@ -1172,6 +1179,30 @@ const getStat = (playerId: number, statKey: string) => {
       return stat ? (stat as any)[statKey] || 0 : 0;
     };
 
+    const handleBoxScoreStatUpdate = (match: any, player: any, st: string, inc: number) => {
+      updatePlayerStat(match.match_id, player.player_id, match.sport, st as any, inc);
+
+      const isTeam1 = player.team_id === match.team1_id;
+      let pts = 0;
+      let extraT1 = 0;
+      let extraT2 = 0;
+
+      if (st === "points") pts = inc;
+      if (st === "gam_jeom" && match.sport === "Taekwondo") {
+        if (isTeam1) extraT2 = inc;
+        else extraT1 = inc;
+      }
+
+      if (pts !== 0 || extraT1 !== 0 || extraT2 !== 0) {
+         const newS1 = Math.max(0, match.score_team1 + (isTeam1 ? pts : 0) + extraT1);
+         const newS2 = Math.max(0, match.score_team2 + (!isTeam1 ? pts : 0) + extraT2);
+         updateMatchScore(match.match_id, newS1, newS2);
+         if (match.status === "completed") {
+            updateMatchStatus(match.match_id, "completed", null);
+         }
+      }
+    };
+
     return (
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <div style={{ background: "var(--panel-bg)", border: `1px solid var(--border-color)`, borderRadius: 16, width: "100%", maxWidth: 900, maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1287,9 +1318,9 @@ const getStat = (playerId: number, statKey: string) => {
                           {sportStats.map(st => (
                             <td key={st} style={{ padding: 8, textAlign: "center" }}>
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                                <button onClick={() => updatePlayerStat(match.match_id, player.player_id, match.sport, st as any, -1)} style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", border: "none", width: 24, height: 24, borderRadius: 4, cursor: "pointer", fontWeight: 900 }}>-</button>
+                                <button onClick={() => handleBoxScoreStatUpdate(match, player, st, -1)} style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444", border: "none", width: 24, height: 24, borderRadius: 4, cursor: "pointer", fontWeight: 900 }}>-</button>
                                 <span style={{ width: 20, fontWeight: 800 }}>{getStat(player.player_id, st)}</span>
-                                <button onClick={() => updatePlayerStat(match.match_id, player.player_id, match.sport, st as any, 1)} style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", border: "none", width: 24, height: 24, borderRadius: 4, cursor: "pointer", fontWeight: 900 }}>+</button>
+                                <button onClick={() => handleBoxScoreStatUpdate(match, player, st, 1)} style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", border: "none", width: 24, height: 24, borderRadius: 4, cursor: "pointer", fontWeight: 900 }}>+</button>
                               </div>
                             </td>
                           ))}

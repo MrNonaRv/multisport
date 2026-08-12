@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect, useRef } from "react";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot, disableNetwork } from "firebase/firestore";
 import { db as firestoreDb } from "../lib/firebase";
 import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
@@ -101,6 +101,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             if (err.code === 'resource-exhausted') {
               quotaExceeded = true;
               console.warn("Firebase Database Quota Exceeded on init.");
+              disableNetwork(firestoreDb).catch(() => {});
             } else {
               console.error("Failed to initialize Firestore", err);
             }
@@ -147,6 +148,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             if (err.code === 'resource-exhausted') {
               quotaExceeded = true;
               console.warn("Firebase Database Quota Exceeded. Writes disabled for this session.");
+              disableNetwork(firestoreDb).catch(() => {});
             } else {
               console.error("Firestore sync error:", err);
             }
@@ -242,7 +244,27 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       const matchToUpd = prev.matches.find(m => m.match_id === matchId);
       if (!matchToUpd) return prev;
 
-      const updatedWinner = winner !== undefined ? winner : matchToUpd.winner;
+      let updatedWinner = winner !== undefined ? winner : matchToUpd.winner;
+      
+      if (status === "completed" && (!updatedWinner || updatedWinner === null)) {
+        let score1 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t1_rounds || 0) : matchToUpd.score_team1;
+        let score2 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t2_rounds || 0) : matchToUpd.score_team2;
+        
+        if (matchToUpd.sport !== "Basketball" && score1 === 0 && score2 === 0) {
+          score1 = matchToUpd.score_team1;
+          score2 = matchToUpd.score_team2;
+        }
+
+        if (score1 > score2) {
+          const t1 = prev.teams.find(t => t.team_id === matchToUpd.team1_id);
+          updatedWinner = t1?.team_name || null;
+        } else if (score2 > score1) {
+          const t2 = prev.teams.find(t => t.team_id === matchToUpd.team2_id);
+          updatedWinner = t2?.team_name || null;
+        } else {
+          updatedWinner = "Draw";
+        }
+      }
       
       let nextDb = {
         ...prev
