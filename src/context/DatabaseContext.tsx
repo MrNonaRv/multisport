@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect, useRef } from "react";
-import { doc, getDoc, setDoc, onSnapshot, disableNetwork } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db as firestoreDb } from "../lib/firebase";
 import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
@@ -101,7 +101,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             if (err.code === 'resource-exhausted') {
               quotaExceeded = true;
               console.warn("Firebase Database Quota Exceeded on init.");
-              disableNetwork(firestoreDb).catch(() => {});
             } else {
               console.error("Failed to initialize Firestore", err);
             }
@@ -148,7 +147,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             if (err.code === 'resource-exhausted') {
               quotaExceeded = true;
               console.warn("Firebase Database Quota Exceeded. Writes disabled for this session.");
-              disableNetwork(firestoreDb).catch(() => {});
             } else {
               console.error("Firestore sync error:", err);
             }

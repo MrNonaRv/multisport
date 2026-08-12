@@ -65,13 +65,51 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const [actionHistory, setActionHistory] = useState<any[]>([]);
   const [showActivityLog, setShowActivityLog] = useState(false);
 
+  const [activePlayers, setActivePlayers] = useState<Set<number>>(new Set());
+  const [subToast, setSubToast] = useState<string | null>(null);
+  const [pendingSubOut, setPendingSubOut] = useState<Player | null>(null);
+
+  const showToast = (msg: string) => {
+    setSubToast(msg);
+    setTimeout(() => setSubToast(null), 3500);
+  };
+
+  const handleToggleActive = (p: Player) => {
+    const isAct = activePlayers.has(p.player_id);
+    const newSet = new Set(activePlayers);
+    if (isAct) {
+      newSet.delete(p.player_id);
+      setPendingSubOut(p);
+      setTimeout(() => {
+        setPendingSubOut(curr => curr?.player_id === p.player_id ? null : curr);
+      }, 6000);
+      showToast(`${p.player_name} subbed out.`);
+    } else {
+      newSet.add(p.player_id);
+      if (pendingSubOut && pendingSubOut.team_id === p.team_id) {
+         const msg = `${p.player_name} substituted for ${pendingSubOut.player_name}`;
+         showToast(msg);
+         addActivityLog(msg);
+         setPendingSubOut(null);
+      } else {
+         const msg = `${p.player_name} checked into the game`;
+         showToast(msg);
+         addActivityLog(msg);
+      }
+    }
+    setActivePlayers(newSet);
+  };
+
   useEffect(() => {
     let interval: any;
     if (match?.clock_status === "running" && match?.last_clock_update !== undefined && match?.remaining_seconds !== undefined) {
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - match?.last_clock_update!) / 1000);
         let currentRemaining = match?.remaining_seconds! - elapsed;
-        if (currentRemaining < 0) currentRemaining = 0;
+        if (currentRemaining <= 0) {
+           currentRemaining = 0;
+           updateMatchLiveState(match!.match_id, { clock_status: "paused", remaining_time: "0:00", remaining_seconds: 0 });
+        }
         
         const m = Math.floor(currentRemaining / 60);
         const s = currentRemaining % 60;
@@ -232,45 +270,58 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   };
 
   const handleUpdateClock = () => {
-    updateMatchDetails(match.match_id, match.venue || "", match.referee || "", period, time);
+    const { secs, str } = parseTime(time);
+    setTime(str);
+    updateMatchDetails(match.match_id, match.venue || "", match.referee || "", period, str);
     
-    const parts = time.split(":");
-    let secs = 0;
-    if (parts.length === 2) {
-      secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-    } else {
-      secs = parseInt(time) || 0;
-    }
-
     updateMatchLiveState(match.match_id, {
-      remaining_time: time,
+      remaining_time: str,
       remaining_seconds: secs,
       last_clock_update: Date.now()
     });
 
-    addActivityLog(`${user?.name} updated clock for match #${match.match_id} to ${period} ${time}`);
+    addActivityLog(`${user?.name} updated clock for match #${match.match_id} to ${period} ${str}`);
+  };
+
+  const parseTime = (t: string) => {
+    if (!t) return { secs: 0, str: "0:00" };
+    const parts = t.split(":");
+    let secs = 0;
+    if (parts.length === 2) {
+      secs = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+    } else {
+      secs = (parseInt(t) || 0) * 60;
+    }
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return { secs, str: `${m}:${s.toString().padStart(2, "0")}` };
   };
 
   const toggleTimer = () => {
     if (match.clock_status === "running") {
-      updateMatchLiveState(match.match_id, { clock_status: "paused" });
+      const { secs, str } = parseTime(time);
+      updateMatchLiveState(match.match_id, { 
+        clock_status: "paused",
+        remaining_time: str,
+        remaining_seconds: secs
+      });
+      setTime(str);
     } else {
       if (match.status !== "live") {
         updateMatchStatus(match.match_id, "live");
       }
-      const parts = time.split(":");
-      let secs = 0;
-      if (parts.length === 2) {
-        secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-      } else {
-        secs = parseInt(time) || 0;
+      let t = time;
+      if (!t || t === "0:00" || t === "0") {
+         t = match.sport === "Basketball" ? "10:00" : (match.sport === "Volleyball" ? "0:00" : "10:00");
       }
+      const { secs, str } = parseTime(t);
       updateMatchLiveState(match.match_id, {
         clock_status: "running",
         last_clock_update: Date.now(),
         remaining_seconds: secs,
-        remaining_time: time
+        remaining_time: str
       });
+      setTime(str);
     }
   };
 
@@ -279,16 +330,20 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
     let t2outs = match.timeouts_team2 || 0;
     
     if (isTeam1) {
-      t1outs += 1;
+      t1outs = Math.max(0, t1outs - 1);
     } else {
-      t2outs += 1;
+      t2outs = Math.max(0, t2outs - 1);
     }
 
     // Pause timer if running
+    const { secs, str } = parseTime(time);
+    setTime(str);
     updateMatchLiveState(match.match_id, {
       timeouts_team1: t1outs,
       timeouts_team2: t2outs,
       clock_status: "paused",
+      remaining_time: str,
+      remaining_seconds: secs,
       recent_action: {
         player_name: "TEAM",
         action: "TIMEOUT",
@@ -314,7 +369,10 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
 
   const handleEndMatch = () => {
     if (window.confirm("Are you sure you want to end this match?")) {
-      updateMatchLiveState(match.match_id, { clock_status: "paused" });
+      updateMatchLiveState(match.match_id, { 
+        clock_status: "paused",
+        remaining_time: time
+      });
       updateMatchStatus(match.match_id, "completed");
       onClose();
     }
@@ -323,9 +381,25 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   return (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "#f8fafc", zIndex: 2000, display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif" }}>
       {/* Top Black Bar */}
-      <div style={{ background: "#18181b", padding: "16px 24px", color: "white", fontSize: "20px", fontWeight: "500", letterSpacing: "0.5px" }}>
-        Live Match Controller
+      <div style={{ background: "#18181b", padding: "16px 24px", color: "white", fontSize: "20px", fontWeight: "500", letterSpacing: "0.5px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>Live Match Controller</span>
+        <div style={{ display: "flex", gap: "32px", fontSize: "14px" }}>
+           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <span style={{ color: "#94a3b8" }}>{t1?.team_name} TIMEOUTS LEFT:</span>
+              <span style={{ fontWeight: "700", color: "#fcd34d", fontSize: "16px" }}>{match.timeouts_team1 || 0}</span>
+           </div>
+           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <span style={{ color: "#94a3b8" }}>{t2?.team_name} TIMEOUTS LEFT:</span>
+              <span style={{ fontWeight: "700", color: "#fcd34d", fontSize: "16px" }}>{match.timeouts_team2 || 0}</span>
+           </div>
+        </div>
       </div>
+
+      {subToast && (
+        <div style={{ position: "absolute", top: 80, left: "50%", transform: "translateX(-50%)", background: "#10b981", color: "white", padding: "8px 24px", borderRadius: "100px", fontWeight: "600", fontSize: "14px", zIndex: 3000, boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)", display: "flex", alignItems: "center", gap: "8px", animation: "fadeIn 0.2s ease-out" }}>
+          🔄 {subToast}
+        </div>
+      )}
 
       {/* Header section */}
       <div style={{ background: "#ffffff", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0" }}>
@@ -401,7 +475,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                  <button onClick={() => handleTimeout(true)} style={{ marginTop: 4, background: "#f1f5f9", border: "none", color: "#475569", borderRadius: "100px", fontSize: "10px", padding: "4px 8px", cursor: "pointer" }}>CALL TIMEOUT</button>
                </div>
                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: 0.3, justifyContent: "center" }}>
-                 <span style={{ fontSize: "12px" }}>TIMEOUTS</span>
+                 <span style={{ fontSize: "12px", textAlign: "center" }}>TIMEOUTS<br/>LEFT</span>
                </div>
                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -445,7 +519,16 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                     {p.jersey_number.toString().padStart(2, '0')}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ color: "#1e293b", fontWeight: "500", fontSize: "13px" }}>{p.player_name}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <input 
+                        type="checkbox" 
+                        checked={activePlayers.has(p.player_id)} 
+                        onChange={() => handleToggleActive(p)} 
+                        title="Active on court"
+                        style={{ cursor: "pointer", width: 14, height: 14, accentColor: "#2563eb" }}
+                      />
+                      <span style={{ color: "#1e293b", fontWeight: activePlayers.has(p.player_id) ? "700" : "500", fontSize: "13px" }}>{p.player_name}</span>
+                    </div>
                     <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: "500", marginTop: "2px" }}>PTS {pStats?.points || 0} &nbsp; FLS {pStats?.fouls || 0}</span>
                   </div>
                 </div>
@@ -495,7 +578,16 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                     {p.jersey_number.toString().padStart(2, '0')}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ color: "#1e293b", fontWeight: "500", fontSize: "13px" }}>{p.player_name}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <input 
+                        type="checkbox" 
+                        checked={activePlayers.has(p.player_id)} 
+                        onChange={() => handleToggleActive(p)} 
+                        title="Active on court"
+                        style={{ cursor: "pointer", width: 14, height: 14, accentColor: "#2563eb" }}
+                      />
+                      <span style={{ color: "#1e293b", fontWeight: activePlayers.has(p.player_id) ? "700" : "500", fontSize: "13px" }}>{p.player_name}</span>
+                    </div>
                     <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: "500", marginTop: "2px" }}>PTS {pStats?.points || 0} &nbsp; FLS {pStats?.fouls || 0}</span>
                   </div>
                 </div>

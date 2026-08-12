@@ -13,17 +13,6 @@ const DashboardMatchCard = React.memo(({
   m, 
   t1, 
   t2, 
-  isEditing, 
-  s1, 
-  s2,
-  r1,
-  r2,
-  setS1, 
-  setS2,
-  setR1,
-  setR2,
-  setEditingMatch, 
-  handleSaveMatchScore, 
   handleStatusChange, 
   deleteMatch, 
   setBoxScoreMatch,
@@ -63,19 +52,10 @@ const DashboardMatchCard = React.memo(({
           ) : (
              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8 }}>{t1?.team_name}</div>
           )}
-          {isEditing ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              {(m.sport !== "Basketball") && (
-                <input type="number" value={r1} onChange={e => setR1(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
-              )}
-              <input type="number" value={s1} onChange={e => setS1(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
-              {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team1}</div>}
-            </div>
-          )}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t1_rounds || 0) : m.score_team1}</div>
+            {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team1}</div>}
+          </div>
         </div>
         <div style={{ fontSize: 14, fontWeight: 800, color: "var(--border-color)", textAlign: "center" }}>
           VS
@@ -87,37 +67,18 @@ const DashboardMatchCard = React.memo(({
           ) : (
              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8 }}>{t2?.team_name}</div>
           )}
-          {isEditing ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              {(m.sport !== "Basketball") && (
-                <input type="number" value={r2} onChange={e => setR2(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #ef4444", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 24, fontWeight: 900, textAlign: "center" }} title="Sets/Rounds" />
-              )}
-              <input type="number" value={s2} onChange={e => setS2(e.target.value === '' ? '' : parseInt(e.target.value) || 0)} style={{ width: 60, background: "var(--bg)", border: "2px solid #38bdf8", borderRadius: 8, padding: 8, color: "var(--text-main)", fontSize: 18, fontWeight: 900, textAlign: "center" }} title="Points" />
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
-              {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team2}</div>}
-            </div>
-          )}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 32, fontWeight: 900 }}>{(m.sport !== "Basketball") ? (m.t2_rounds || 0) : m.score_team2}</div>
+            {(m.sport !== "Basketball") && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 800 }}>PTS: {m.score_team2}</div>}
+          </div>
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-        {isEditing ? (
-          <>
-            <button onClick={() => handleSaveMatchScore(m.match_id)} style={{ flex: 1, background: "#10b981", color: "var(--text-main)", border: "none", padding: "12px", borderRadius: 8, fontWeight: 900, cursor: "pointer", fontSize: 16 }}>SAVE SCORE</button>
-            <button onClick={() => setEditingMatch(null)} style={{ flex: 1, background: "var(--panel-bg)", color: "var(--text-main)", border: "1px solid var(--border-color)", padding: "12px", borderRadius: 8, fontWeight: 900, cursor: "pointer", fontSize: 16 }}>CANCEL</button>
-          </>
-        ) : (
-          <>
-            <button onClick={() => setLiveControlMatch(m.match_id)} style={{ flex: "1 1 auto", width: "100%", background: "#ef4444", color: "var(--text-main)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 6px 12px rgba(239, 68, 68, 0.3)" }}><Activity size={24} /> LIVE CONTROL</button>
-            <div style={{ display: "flex", gap: 10, width: "100%" }}>
-              <button onClick={() => { setEditingMatch(m.match_id); setS1(m.score_team1); setS2(m.score_team2); setR1(m.t1_rounds || 0); setR2(m.t2_rounds || 0); }} style={{ flex: 1, background: "var(--border-color)", color: "#38bdf8", border: "none", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>Edit Score</button>
-              <button onClick={() => setBoxScoreMatch(m.match_id)} style={{ flex: 1, background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.3)", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><BarChart2 size={18} /> Box Score</button>
-            </div>
-          </>
-        )}
+        <button onClick={() => setLiveControlMatch(m.match_id)} style={{ flex: "1 1 auto", width: "100%", background: "#ef4444", color: "var(--text-main)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 6px 12px rgba(239, 68, 68, 0.3)" }}><Activity size={24} /> LIVE CONTROL</button>
+        <div style={{ display: "flex", gap: 10, width: "100%" }}>
+          <button onClick={() => setBoxScoreMatch(m.match_id)} style={{ flex: 1, background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.3)", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><BarChart2 size={18} /> Box Score</button>
+        </div>
       </div>
     </div>
   );
@@ -161,11 +122,7 @@ export default function Dashboard() {
   // Match State
   const [matchSportFilter, setMatchSportFilter] = useState("");
   useEffect(() => { if(!matchSportFilter && db.sports.length) setMatchSportFilter(db.sports[0]); }, [db.sports, matchSportFilter]);
-  const [editingMatch, setEditingMatch] = useState<number | null>(null);
-  const [s1, setS1] = useState<number | string>(0);
-  const [s2, setS2] = useState<number | string>(0);
-  const [r1, setR1] = useState<number | string>(0);
-  const [r2, setR2] = useState<number | string>(0);
+
   const [boxScoreMatch, setBoxScoreMatch] = useState<number | null>(null);
   const [liveControlMatch, setLiveControlMatch] = useState<number | null>(null);
 
@@ -250,25 +207,7 @@ export default function Dashboard() {
 
   // --- Handlers ---
 
-  const handleSaveMatchScore = useCallback((matchId: number) => {
-    const numS1 = Number(s1) || 0;
-    const numS2 = Number(s2) || 0;
-    const numR1 = Number(r1) || 0;
-    const numR2 = Number(r2) || 0;
 
-    updateMatchScore(matchId, numS1, numS2);
-    updateMatchLiveState(matchId, { t1_rounds: numR1, t2_rounds: numR2 });
-    
-    // Auto-recalculate winner if match is completed
-    const match = db.matches.find(m => m.match_id === matchId);
-    if (match && match.status === "completed") {
-      updateMatchStatus(matchId, "completed", null);
-    }
-    
-    setEditingMatch(null);
-    addActivityLog(`${user?.name} updated score for match #${matchId} to ${numS1}-${numS2} (Sets: ${numR1}-${numR2})`);
-    showMsg("s", "Match score updated successfully!");
-  }, [db.matches, s1, s2, r1, r2, updateMatchScore, updateMatchLiveState, updateMatchStatus, addActivityLog, user]);
 
   const handleStatusChange = useCallback((matchId: number, status: "upcoming" | "live" | "completed", m: Match) => {
     let winner = m.winner;
@@ -733,25 +672,12 @@ export default function Dashboard() {
           {filteredMatches.map(m => {
             const t1 = teamsMap[m.team1_id];
             const t2 = teamsMap[m.team2_id];
-            const isEditing = editingMatch === m.match_id;
-
             return (
               <DashboardMatchCard
                 key={m.match_id}
                 m={m}
                 t1={t1}
                 t2={t2}
-                isEditing={isEditing}
-                s1={isEditing ? s1 : m.score_team1}
-                s2={isEditing ? s2 : m.score_team2}
-                r1={isEditing ? r1 : (m.t1_rounds || 0)}
-                r2={isEditing ? r2 : (m.t2_rounds || 0)}
-                setS1={setS1}
-                setS2={setS2}
-                setR1={setR1}
-                setR2={setR2}
-                setEditingMatch={setEditingMatch}
-                handleSaveMatchScore={handleSaveMatchScore}
                 handleStatusChange={handleStatusChange}
                 deleteMatch={deleteMatch}
                 setBoxScoreMatch={setBoxScoreMatch}
