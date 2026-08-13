@@ -381,7 +381,7 @@ export default function Dashboard() {
         { id: "teams", label: "Teams", icon: Shield, color: "#3b82f6" }, 
         { id: "players", label: "Players", icon: Users, color: "#10b981" }, 
         { id: "brackets", label: "Brackets", icon: Trophy, color: "#8b5cf6" }, 
-        { id: "system", label: "Add Sport", icon: PlusCircle, color: "#f59e0b" },
+        { id: "system", label: "Active Sport", icon: PlusCircle, color: "#f59e0b" },
         { id: "activity", label: "Activity Logs", icon: Activity, color: "#64748b" },
         { id: "users", label: "Admin Users", icon: UserCog, color: "#ef4444" }
       ]);
@@ -1235,7 +1235,7 @@ const getStat = (playerId: number, statKey: string) => {
                 {activeTab === "teams" && "Teams"}
                 {activeTab === "players" && "Players"}
                 {activeTab === "brackets" && "Tournament Brackets"}
-                {activeTab === "system" && "Add Sport"}
+                {activeTab === "system" && "Active Sport"}
                 {activeTab === "users" && "Admin Users"}
                 {activeTab === "activity" && "Activity Logs"}
               </h1>
