@@ -355,11 +355,11 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
     addActivityLog(`${user?.name} recorded a TIMEOUT for ${isTeam1 ? t1?.team_name : t2?.team_name}`);
   };
 
-  const handleAdjustTimeout = (isTeam1: boolean, amount: number) => {
+  const handleSetTimeout = (isTeam1: boolean, val: number) => {
     let t1outs = match.timeouts_team1 || 0;
     let t2outs = match.timeouts_team2 || 0;
-    if (isTeam1) t1outs = Math.max(0, t1outs + amount);
-    else t2outs = Math.max(0, t2outs + amount);
+    if (isTeam1) t1outs = Math.max(0, val);
+    else t2outs = Math.max(0, val);
     
     updateMatchLiveState(match.match_id, {
       timeouts_team1: t1outs,
@@ -383,16 +383,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       {/* Top Black Bar */}
       <div style={{ background: "#18181b", padding: "16px 24px", color: "white", fontSize: "20px", fontWeight: "500", letterSpacing: "0.5px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>Live Match Controller</span>
-        <div style={{ display: "flex", gap: "32px", fontSize: "14px" }}>
-           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <span style={{ color: "#94a3b8" }}>{t1?.team_name} TIMEOUTS LEFT:</span>
-              <span style={{ fontWeight: "700", color: "#fcd34d", fontSize: "16px" }}>{match.timeouts_team1 || 0}</span>
-           </div>
-           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <span style={{ color: "#94a3b8" }}>{t2?.team_name} TIMEOUTS LEFT:</span>
-              <span style={{ fontWeight: "700", color: "#fcd34d", fontSize: "16px" }}>{match.timeouts_team2 || 0}</span>
-           </div>
-        </div>
+
       </div>
 
       {subToast && (
@@ -465,25 +456,27 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
             )}
             
             {/* Center Area, could be timeouts or status */}
-             <div style={{ color: "#64748b", fontSize: "14px", fontWeight: "600", display: "flex", gap: "24px", marginTop: (match.sport !== "Basketball") ? "0px" : "80px" }}>
+             <div style={{ display: "flex", gap: "64px", marginTop: (match.sport !== "Basketball") ? "0px" : "80px" }}>
                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => handleAdjustTimeout(true, -1)} style={{ cursor: "pointer", border: "none", background: "transparent", fontSize: "16px" }}>-</button>
-                  <span style={{ fontSize: "20px", color: "#1e293b", fontWeight: "700" }}>{match.timeouts_team1 || 0}</span>
-                  <button onClick={() => handleAdjustTimeout(true, 1)} style={{ cursor: "pointer", border: "none", background: "transparent", fontSize: "16px" }}>+</button>
-                 </div>
-                 <button onClick={() => handleTimeout(true)} style={{ marginTop: 4, background: "#f1f5f9", border: "none", color: "#475569", borderRadius: "100px", fontSize: "10px", padding: "4px 8px", cursor: "pointer" }}>CALL TIMEOUT</button>
+                 <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "700", letterSpacing: "1px", marginBottom: "8px" }}>TIMEOUTS LEFT</span>
+                 <input 
+                   type="number" 
+                   value={match.timeouts_team1 || 0} 
+                   onChange={e => handleSetTimeout(true, parseInt(e.target.value) || 0)}
+                   style={{ width: "60px", textAlign: "center", fontSize: "28px", color: "#1e293b", fontWeight: "800", border: "2px solid #e2e8f0", borderRadius: "12px", background: "white", padding: "4px 0", marginBottom: "12px" }} 
+                 />
+                 <button onClick={() => handleTimeout(true)} style={{ background: "#f1f5f9", border: "none", color: "#475569", borderRadius: "100px", fontSize: "11px", fontWeight: "700", padding: "8px 16px", cursor: "pointer", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#e2e8f0"} onMouseOut={e => e.currentTarget.style.background = "#f1f5f9"}>CALL TIMEOUT</button>
                </div>
-               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: 0.3, justifyContent: "center" }}>
-                 <span style={{ fontSize: "12px", textAlign: "center" }}>TIMEOUTS<br/>LEFT</span>
-               </div>
+               
                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => handleAdjustTimeout(false, -1)} style={{ cursor: "pointer", border: "none", background: "transparent", fontSize: "16px" }}>-</button>
-                  <span style={{ fontSize: "20px", color: "#1e293b", fontWeight: "700" }}>{match.timeouts_team2 || 0}</span>
-                  <button onClick={() => handleAdjustTimeout(false, 1)} style={{ cursor: "pointer", border: "none", background: "transparent", fontSize: "16px" }}>+</button>
-                 </div>
-                 <button onClick={() => handleTimeout(false)} style={{ marginTop: 4, background: "#f1f5f9", border: "none", color: "#475569", borderRadius: "100px", fontSize: "10px", padding: "4px 8px", cursor: "pointer" }}>CALL TIMEOUT</button>
+                 <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "700", letterSpacing: "1px", marginBottom: "8px" }}>TIMEOUTS LEFT</span>
+                 <input 
+                   type="number" 
+                   value={match.timeouts_team2 || 0} 
+                   onChange={e => handleSetTimeout(false, parseInt(e.target.value) || 0)}
+                   style={{ width: "60px", textAlign: "center", fontSize: "28px", color: "#1e293b", fontWeight: "800", border: "2px solid #e2e8f0", borderRadius: "12px", background: "white", padding: "4px 0", marginBottom: "12px" }} 
+                 />
+                 <button onClick={() => handleTimeout(false)} style={{ background: "#f1f5f9", border: "none", color: "#475569", borderRadius: "100px", fontSize: "11px", fontWeight: "700", padding: "8px 16px", cursor: "pointer", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#e2e8f0"} onMouseOut={e => e.currentTarget.style.background = "#f1f5f9"}>CALL TIMEOUT</button>
                </div>
              </div>
           </div>
