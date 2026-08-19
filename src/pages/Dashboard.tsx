@@ -103,6 +103,8 @@ export default function Dashboard() {
     updateBracket,
     updateMatchLiveState,
     addSport,
+    addReferee,
+    deleteReferee,
   } = useDatabase();
 
   const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets">("matches");

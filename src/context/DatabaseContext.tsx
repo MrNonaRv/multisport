@@ -9,6 +9,33 @@ const FIRESTORE_DOC_ID = "data/sports_db";
 
 let quotaExceeded = false;
 
+interface LiveGameActionParams {
+  matchId: number;
+  playerId?: number;
+  sport?: string;
+  statKey?: keyof PlayerStat;
+  statIncrement?: number;
+  scoreTeam1?: number;
+  scoreTeam2?: number;
+  t1Rounds?: number;
+  t2Rounds?: number;
+  clockStatus?: "running" | "paused";
+  remainingTime?: string;
+  remainingSeconds?: number;
+  lastClockUpdate?: number;
+  matchStatus?: "completed" | "live" | "upcoming";
+  winner?: string | null;
+  timeoutsTeam1?: number;
+  timeoutsTeam2?: number;
+  recentAction?: {
+    player_name: string;
+    action: string;
+    team_id: number;
+    timestamp: string;
+  } | null;
+  activityLogMessage?: string;
+}
+
 interface DatabaseContextType {
   db: Database;
   loading: boolean;
@@ -32,11 +59,15 @@ interface DatabaseContextType {
   addSport: (sport: string) => void;
   addReferee: (referee: Omit<Referee, "referee_id">) => void;
   deleteReferee: (refereeId: number) => void;
+  recordLiveGameAction: (params: LiveGameActionParams) => void;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
+  const clientId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36));
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
   const [db, setDb] = useState<Database>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -48,6 +79,106 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
 
+  const isWritingRef = useRef<boolean>(false);
+  const pendingWriteRef = useRef<boolean>(false);
+  const syncTimerRef = useRef<any>(null);
+  const latestDbRef = useRef<Database>(db);
+
+  // Keep latestDbRef in sync with state
+  latestDbRef.current = db;
+
+  // Real-time Cross-tab broadcast & storage listener
+  useEffect(() => {
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        const channel = new BroadcastChannel("multisports_sync_v7");
+        channelRef.current = channel;
+        channel.onmessage = (event) => {
+          if (event.data && event.data.type === "SYNC_DB" && event.data.payload) {
+            if (event.data.senderId !== clientId.current) {
+              const incoming = event.data.payload as Database;
+              setDb(incoming);
+              latestDbRef.current = incoming;
+            }
+          }
+        };
+      } catch (e) {
+        console.warn("BroadcastChannel error:", e);
+      }
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue) as Database;
+          setDb(parsed);
+          latestDbRef.current = parsed;
+        } catch (err) {
+          console.error("Storage sync error:", err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      if (channelRef.current) {
+        channelRef.current.close();
+        channelRef.current = null;
+      }
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  // Flush to Firestore worker
+  const flushToFirestore = useCallback(() => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+
+    if (quotaExceeded) return;
+    if (!latestDbRef.current) return;
+
+    if (isWritingRef.current) {
+      pendingWriteRef.current = true;
+      return;
+    }
+
+    isWritingRef.current = true;
+    const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
+    const dataToSave = latestDbRef.current;
+
+    setDoc(docRef, dataToSave, { merge: false })
+      .catch((err) => {
+        if (err.code === "resource-exhausted") {
+          quotaExceeded = true;
+          console.warn("Firebase Database Quota Exceeded. Writes disabled for this session.");
+        } else {
+          console.error("Firestore sync error:", err);
+        }
+      })
+      .finally(() => {
+        isWritingRef.current = false;
+        if (pendingWriteRef.current) {
+          pendingWriteRef.current = false;
+          syncTimerRef.current = setTimeout(flushToFirestore, 20);
+        }
+      });
+  }, []);
+
+  const scheduleFirestoreSync = useCallback((immediate: boolean = false) => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+    }
+
+    if (immediate) {
+      flushToFirestore();
+    } else {
+      // 30ms window batches simultaneous micro-updates without human-perceptible delay
+      syncTimerRef.current = setTimeout(flushToFirestore, 30);
+    }
+  }, [flushToFirestore]);
+
   // Read from Firestore on mount and listen to real-time changes
   useEffect(() => {
     const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
@@ -56,6 +187,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         try {
+          if (snapshot.metadata.hasPendingWrites) {
+            setLoading(false);
+            return;
+          }
+
           const parsed = snapshot.data() as Database;
           if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
           if (!parsed.teams) parsed.teams = [];
@@ -73,23 +209,20 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           if (!parsed.activityLogs) parsed.activityLogs = [];
           if (!parsed.referees) parsed.referees = [];
           
-          try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-              const localDb = JSON.parse(saved) as Database;
-              if (localDb.lastUpdated && parsed.lastUpdated && localDb.lastUpdated > parsed.lastUpdated) {
-                // Local is newer. Keep it.
-                setDb(localDb);
-                setLoading(false);
-                return;
-              }
+          if (latestDbRef.current && latestDbRef.current.lastUpdated && parsed.lastUpdated) {
+            if (latestDbRef.current.lastUpdated > parsed.lastUpdated && isWritingRef.current) {
+              setLoading(false);
+              return;
             }
-          } catch (e) {
-            console.error("Failed to parse local db inside snapshot", e);
           }
           
           setDb(parsed);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          latestDbRef.current = parsed;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          } catch (e) {
+            console.error("Failed to save remote snapshot to storage", e);
+          }
         } catch (e) {
           console.error("Failed to parse remote database", e);
         }
@@ -107,6 +240,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           });
         }
         setDb(initial);
+        latestDbRef.current = initial;
       }
       setLoading(false);
     }, (error) => {
@@ -117,11 +251,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  // Removed localStorage sync effect and added Firestore save wrapper
-  const syncTimeoutRef = useRef<any>(null);
-  const latestDbRef = useRef<Database | null>(null);
-
-  const setDbAndSync = useCallback((updater: (prev: Database) => Database) => {
+  const setDbAndSync = useCallback((updater: (prev: Database) => Database, immediateSync: boolean = false) => {
     setDb((prev) => {
       let nextDb = updater(prev);
       
@@ -138,25 +268,23 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         console.error("Local storage error:", e);
       }
       
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-      
-      syncTimeoutRef.current = setTimeout(() => {
-        if (latestDbRef.current && !quotaExceeded) {
-          const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
-          setDoc(docRef, latestDbRef.current, { merge: false }).catch(err => {
-            if (err.code === 'resource-exhausted') {
-              quotaExceeded = true;
-              console.warn("Firebase Database Quota Exceeded. Writes disabled for this session.");
-            } else {
-              console.error("Firestore sync error:", err);
-            }
+      if (channelRef.current) {
+        try {
+          channelRef.current.postMessage({
+            type: "SYNC_DB",
+            payload: nextDb,
+            senderId: clientId.current
           });
+        } catch (e) {
+          console.error("Channel post error:", e);
         }
-      }, 2000);
+      }
+      
+      scheduleFirestoreSync(immediateSync);
       
       return nextDb;
     });
-  }, []);
+  }, [scheduleFirestoreSync]);
 
   // Poll for auto-scheduling live matches
   useEffect(() => {
@@ -473,7 +601,140 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         return { ...prev, brackets: [...prev.brackets, bracket] };
       }
     });
-  }, []);
+  }, [setDbAndSync]);
+
+  const recordLiveGameAction = useCallback((params: LiveGameActionParams) => {
+    setDbAndSync(prev => {
+      let nextDb = { ...prev };
+      
+      // 1. Update player stat if specified
+      if (params.playerId && params.statKey && params.statIncrement !== undefined && params.statIncrement !== 0) {
+        const existingStatIndex = nextDb.playerStats.findIndex(s => s.match_id === params.matchId && s.player_id === params.playerId);
+        if (existingStatIndex >= 0) {
+          const newStats = [...nextDb.playerStats];
+          const currentVal = (newStats[existingStatIndex] as any)[params.statKey] || 0;
+          (newStats[existingStatIndex] as any)[params.statKey] = Math.max(0, currentVal + params.statIncrement);
+          nextDb.playerStats = newStats;
+        } else {
+          const newId = nextDb.playerStats.length > 0 ? Math.max(...nextDb.playerStats.map(s => s.stat_id)) + 1 : 1;
+          const newStat: PlayerStat = {
+            stat_id: newId,
+            match_id: params.matchId,
+            player_id: params.playerId,
+            sport: params.sport || "",
+            [params.statKey]: Math.max(0, params.statIncrement)
+          };
+          nextDb.playerStats = [...nextDb.playerStats, newStat];
+        }
+      }
+
+      // 2. Update match fields
+      const matchIndex = nextDb.matches.findIndex(m => m.match_id === params.matchId);
+      if (matchIndex >= 0) {
+        const currentM = nextDb.matches[matchIndex];
+        const updatedM: Match = { ...currentM };
+
+        if (params.scoreTeam1 !== undefined) updatedM.score_team1 = params.scoreTeam1;
+        if (params.scoreTeam2 !== undefined) updatedM.score_team2 = params.scoreTeam2;
+        if (params.t1Rounds !== undefined) updatedM.t1_rounds = params.t1Rounds;
+        if (params.t2Rounds !== undefined) updatedM.t2_rounds = params.t2Rounds;
+        if (params.clockStatus !== undefined) updatedM.clock_status = params.clockStatus;
+        if (params.remainingTime !== undefined) updatedM.remaining_time = params.remainingTime;
+        if (params.remainingSeconds !== undefined) updatedM.remaining_seconds = params.remainingSeconds;
+        if (params.lastClockUpdate !== undefined) updatedM.last_clock_update = params.lastClockUpdate;
+        if (params.timeoutsTeam1 !== undefined) updatedM.timeouts_team1 = params.timeoutsTeam1;
+        if (params.timeoutsTeam2 !== undefined) updatedM.timeouts_team2 = params.timeoutsTeam2;
+        if (params.recentAction !== undefined) updatedM.recent_action = params.recentAction || undefined;
+
+        if (params.matchStatus !== undefined) {
+          updatedM.status = params.matchStatus;
+          if (params.winner !== undefined) {
+            updatedM.winner = params.winner;
+          }
+        }
+
+        // Calculate MVP if completed
+        if (updatedM.status === "completed") {
+          const sportStatsKeys = (S_STATS as any)[updatedM.sport] || ["points"];
+          const primaryStat = sportStatsKeys[0];
+          const matchStats = nextDb.playerStats.filter(s => s.match_id === params.matchId);
+          if (matchStats.length > 0) {
+            const topStat = [...matchStats].sort((a, b) => ((b as any)[primaryStat] || 0) - ((a as any)[primaryStat] || 0))[0];
+            updatedM.mvp_id = topStat.player_id;
+          }
+        }
+
+        const newMatches = [...nextDb.matches];
+        newMatches[matchIndex] = updatedM;
+        nextDb.matches = newMatches;
+
+        // Auto update bracket if match completed with winner
+        if (updatedM.status === "completed" && updatedM.winner) {
+          const t1 = nextDb.teams.find(t => t.team_id === updatedM.team1_id)?.team_name;
+          const t2 = nextDb.teams.find(t => t.team_id === updatedM.team2_id)?.team_name;
+          const sport = updatedM.sport;
+          const b = nextDb.brackets.find(br => br.sport === sport && br.category === updatedM.category);
+          
+          if (b && t1 && t2) {
+            let updatedBrackets = [...nextDb.brackets];
+            let updatedBracket = { ...b, qf: [...b.qf], sf: [...b.sf], final: { ...b.final } };
+            let bIndex = updatedBrackets.findIndex(br => br.sport === sport && br.category === updatedM.category);
+            
+            let scoreToUse1 = updatedM.sport !== "Basketball" ? (updatedM.t1_rounds || 0) : updatedM.score_team1;
+            let scoreToUse2 = updatedM.sport !== "Basketball" ? (updatedM.t2_rounds || 0) : updatedM.score_team2;
+            let slotFound = false;
+
+            for (let i = 0; i < 4; i++) {
+              if ((b.qf[i].team1 === t1 && b.qf[i].team2 === t2) || (b.qf[i].team1 === t2 && b.qf[i].team2 === t1)) {
+                let isT1 = b.qf[i].team1 === t1;
+                updatedBracket.qf[i] = { ...b.qf[i], score1: isT1 ? scoreToUse1 : scoreToUse2, score2: isT1 ? scoreToUse2 : scoreToUse1, winner: updatedM.winner };
+                let nextSf = Math.floor(i / 2);
+                if (i % 2 === 0) updatedBracket.sf[nextSf] = { ...updatedBracket.sf[nextSf], team1: updatedM.winner };
+                else updatedBracket.sf[nextSf] = { ...updatedBracket.sf[nextSf], team2: updatedM.winner };
+                slotFound = true;
+                break;
+              }
+            }
+
+            if (!slotFound) {
+              for (let i = 0; i < 2; i++) {
+                if ((b.sf[i].team1 === t1 && b.sf[i].team2 === t2) || (b.sf[i].team1 === t2 && b.sf[i].team2 === t1)) {
+                  let isT1 = b.sf[i].team1 === t1;
+                  updatedBracket.sf[i] = { ...b.sf[i], score1: isT1 ? scoreToUse1 : scoreToUse2, score2: isT1 ? scoreToUse2 : scoreToUse1, winner: updatedM.winner };
+                  if (i === 0) updatedBracket.final = { ...updatedBracket.final, team1: updatedM.winner };
+                  else updatedBracket.final = { ...updatedBracket.final, team2: updatedM.winner };
+                  slotFound = true;
+                  break;
+                }
+              }
+            }
+
+            if (!slotFound) {
+              if ((b.final.team1 === t1 && b.final.team2 === t2) || (b.final.team1 === t2 && b.final.team2 === t1)) {
+                let isT1 = b.final.team1 === t1;
+                updatedBracket.final = { ...b.final, score1: isT1 ? scoreToUse1 : scoreToUse2, score2: isT1 ? scoreToUse2 : scoreToUse1, winner: updatedM.winner };
+                updatedBracket.champion = updatedM.winner;
+                slotFound = true;
+              }
+            }
+
+            if (slotFound) {
+              updatedBrackets[bIndex] = updatedBracket;
+              nextDb.brackets = updatedBrackets;
+            }
+          }
+        }
+      }
+
+      // 3. Activity log
+      if (params.activityLogMessage) {
+        const newId = nextDb.activityLogs.length > 0 ? Math.max(...nextDb.activityLogs.map(l => l.id)) + 1 : 1;
+        nextDb.activityLogs = [{ id: newId, message: params.activityLogMessage, timestamp: new Date().toISOString() }, ...nextDb.activityLogs].slice(0, 50);
+      }
+
+      return nextDb;
+    }, true);
+  }, [setDbAndSync]);
 
   const contextValue = useMemo(() => ({
     db, 
@@ -497,7 +758,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     updateMatchLiveState,
     addSport,
     addReferee,
-    deleteReferee
+    deleteReferee,
+    recordLiveGameAction
   }), [
     db, 
     loading,
@@ -520,7 +782,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     updateMatchLiveState,
     addSport,
     addReferee,
-    deleteReferee
+    deleteReferee,
+    recordLiveGameAction
   ]);
 
   return (

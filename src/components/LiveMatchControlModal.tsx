@@ -54,13 +54,33 @@ const QUICK_ACTIONS: Record<string, { label: string, stat: keyof PlayerStat, pts
 };
 
 export default function LiveMatchControlModal({ matchId, onClose }: { matchId: number, onClose: () => void }) {
-  const { db, updateMatchScore, updateMatchDetails, updatePlayerStat, addActivityLog, updateMatchLiveState, updateMatchStatus } = useDatabase();
+  const { db, updateMatchDetails, recordLiveGameAction, addActivityLog, updateMatchLiveState, updateMatchStatus } = useDatabase();
   const { user } = useAuth();
   
   const match = db.matches.find(m => m.match_id === matchId);
   const [period, setPeriod] = useState(match?.current_period || "");
   const [time, setTime] = useState(match?.remaining_time || "");
+  const [referee, setReferee] = useState(match?.referee || "");
   
+  // Keep local period, time, and referee in sync with match changes
+  useEffect(() => {
+    if (match?.current_period !== undefined) {
+      setPeriod(match.current_period);
+    }
+  }, [match?.current_period]);
+
+  useEffect(() => {
+    if (match?.referee !== undefined) {
+      setReferee(match.referee);
+    }
+  }, [match?.referee]);
+
+  useEffect(() => {
+    if (match?.clock_status !== "running" && match?.remaining_time !== undefined) {
+      setTime(match.remaining_time);
+    }
+  }, [match?.remaining_time, match?.clock_status]);
+
   // Track actions for undo
   const [actionHistory, setActionHistory] = useState<any[]>([]);
   const [showActivityLog, setShowActivityLog] = useState(false);
@@ -108,7 +128,13 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
         let currentRemaining = match?.remaining_seconds! - elapsed;
         if (currentRemaining <= 0) {
            currentRemaining = 0;
-           updateMatchLiveState(match!.match_id, { clock_status: "paused", remaining_time: "0:00", remaining_seconds: 0 });
+           recordLiveGameAction({
+             matchId: match!.match_id,
+             clockStatus: "paused",
+             remainingTime: "0:00",
+             remainingSeconds: 0,
+             activityLogMessage: `Match #${match!.match_id} clock reached 0:00`
+           });
         }
         
         const m = Math.floor(currentRemaining / 60);
@@ -117,7 +143,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [match?.clock_status, match?.last_clock_update, match?.remaining_seconds]);
+  }, [match?.clock_status, match?.last_clock_update, match?.remaining_seconds, match?.match_id, recordLiveGameAction]);
   if (!match) return null;
 
   const t1 = db.teams.find(t => t.team_id === match.team1_id);
@@ -147,10 +173,6 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       oldRecentAction: match.recent_action || null
     }]);
 
-    // Update player stat
-    updatePlayerStat(match.match_id, player.player_id, match.sport, action.stat as any, action.inc);
-
-    
     // Check for special Gam-jeom rule (Taekwondo)
     let extraPointsT1 = 0;
     let extraPointsT2 = 0;
@@ -160,13 +182,19 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       else extraPointsT1 += 1;
     }
 
+    let newS1 = match.score_team1;
+    let newS2 = match.score_team2;
+    let t1_rounds = match.t1_rounds || 0;
+    let t2_rounds = match.t2_rounds || 0;
+    let newStatus = match.status;
+    let newWinner = match.winner;
+    let newClockStatus = match.clock_status;
+
     // Update match score if points are involved
     if (action.pts > 0 || extraPointsT1 > 0 || extraPointsT2 > 0) {
-      let newS1 = match.score_team1 + (isTeam1 ? action.pts : 0) + extraPointsT1;
-      let newS2 = match.score_team2 + (!isTeam1 ? action.pts : 0) + extraPointsT2;
+      newS1 = match.score_team1 + (isTeam1 ? action.pts : 0) + extraPointsT1;
+      newS2 = match.score_team2 + (!isTeam1 ? action.pts : 0) + extraPointsT2;
       
-      let t1_rounds = match.t1_rounds || 0;
-      let t2_rounds = match.t2_rounds || 0;
       let checkRoundWin = false;
       let checkMatchWin = false;
 
@@ -176,7 +204,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       let maxRoundsToWin = 1;
 
       if (match.sport === 'Volleyball') {
-        targetScore = 25; // Simple version: normally 3rd set might be 15, but let's stick to 25
+        targetScore = 25;
         if (t1_rounds + t2_rounds === 2) targetScore = 15; // 3rd set
         winByTwo = true;
         maxRoundsToWin = 2; // Best of 3
@@ -193,7 +221,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
         winByTwo = false;
         maxRoundsToWin = 2;
       } else if (match.sport === 'Taekwondo') {
-        targetScore = 12; // Sample target gap/score for TKD
+        targetScore = 12;
         winByTwo = false;
         maxRoundsToWin = 2;
       }
@@ -214,8 +242,6 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
          if (newS1 > newS2) t1_rounds += 1;
          else if (newS2 > newS1) t2_rounds += 1;
          
-         addActivityLog(`${match.sport} Set/Round Won by ${newS1 > newS2 ? t1?.team_name : t2?.team_name}!`);
-         
          if (t1_rounds >= maxRoundsToWin || t2_rounds >= maxRoundsToWin) {
              checkMatchWin = true;
          } else {
@@ -224,49 +250,62 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
          }
       }
 
-      updateMatchScore(match.match_id, newS1, newS2);
-      
-      if (targetScore > 0) { 
-         updateMatchLiveState(match.match_id, { t1_rounds, t2_rounds });
-      }
-
       if (checkMatchWin) {
-         updateMatchLiveState(match.match_id, { clock_status: "paused" });
-         updateMatchStatus(match.match_id, "completed", t1_rounds >= maxRoundsToWin ? t1?.team_name : t2?.team_name);
-         addActivityLog(`${match.sport} Match Won by ${t1_rounds >= maxRoundsToWin ? t1?.team_name : t2?.team_name}!`);
+         newClockStatus = "paused";
+         newStatus = "completed";
+         newWinner = t1_rounds >= maxRoundsToWin ? (t1?.team_name || null) : (t2?.team_name || null);
       }
     }
-    
-    updateMatchLiveState(match.match_id, {
-      recent_action: {
-        player_name: player.player_name,
-        action: action.label,
-        team_id: isTeam1 ? t1!.team_id : t2!.team_id,
-        timestamp: new Date().toISOString()
-      }
+
+    const recentAct = {
+      player_name: player.player_name,
+      action: action.label,
+      team_id: isTeam1 ? t1!.team_id : t2!.team_id,
+      timestamp: new Date().toISOString()
+    };
+
+    const logMsg = `${user?.name || "Official"} recorded ${action.label} for ${player.player_name} (${isTeam1 ? t1?.team_name : t2?.team_name})`;
+
+    recordLiveGameAction({
+      matchId: match.match_id,
+      playerId: player.player_id,
+      sport: match.sport,
+      statKey: action.stat as any,
+      statIncrement: action.inc,
+      scoreTeam1: newS1,
+      scoreTeam2: newS2,
+      t1Rounds: t1_rounds,
+      t2Rounds: t2_rounds,
+      clockStatus: newClockStatus,
+      matchStatus: newStatus,
+      winner: newWinner,
+      recentAction: recentAct,
+      activityLogMessage: logMsg
     });
-
-    addActivityLog(`${user?.name} recorded ${action.label} for ${player.player_name} (${isTeam1 ? t1?.team_name : t2?.team_name})`);
   };
-
 
   const handleUndo = () => {
     if (actionHistory.length === 0) return;
     const lastAction = actionHistory[actionHistory.length - 1];
     
-    updatePlayerStat(match.match_id, lastAction.playerId, match.sport, lastAction.stat, -lastAction.inc);
-    updateMatchScore(match.match_id, lastAction.oldS1, lastAction.oldS2);
-    updateMatchLiveState(match.match_id, {
-      t1_rounds: lastAction.oldR1,
-      t2_rounds: lastAction.oldR2,
-      clock_status: lastAction.oldClockStatus,
-      recent_action: lastAction.oldRecentAction
+    recordLiveGameAction({
+      matchId: match.match_id,
+      playerId: lastAction.playerId,
+      sport: match.sport,
+      statKey: lastAction.stat,
+      statIncrement: -lastAction.inc,
+      scoreTeam1: lastAction.oldS1,
+      scoreTeam2: lastAction.oldS2,
+      t1Rounds: lastAction.oldR1,
+      t2Rounds: lastAction.oldR2,
+      clockStatus: lastAction.oldClockStatus,
+      matchStatus: lastAction.oldStatus,
+      winner: lastAction.oldWinner,
+      recentAction: lastAction.oldRecentAction,
+      activityLogMessage: `${user?.name || "Official"} undid last action`
     });
-    if (lastAction.oldStatus !== match.status) {
-      updateMatchStatus(match.match_id, lastAction.oldStatus as any, lastAction.oldWinner);
-    }
+
     setActionHistory(prev => prev.slice(0, -1));
-    addActivityLog(`${user?.name} undid last action`);
   };
 
   const handleUpdateClock = () => {
@@ -274,13 +313,13 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
     setTime(str);
     updateMatchDetails(match.match_id, match.venue || "", match.referee || "", period, str);
     
-    updateMatchLiveState(match.match_id, {
-      remaining_time: str,
-      remaining_seconds: secs,
-      last_clock_update: Date.now()
+    recordLiveGameAction({
+      matchId: match.match_id,
+      remainingTime: str,
+      remainingSeconds: secs,
+      lastClockUpdate: Date.now(),
+      activityLogMessage: `${user?.name || "Official"} updated clock for match #${match.match_id} to ${period} ${str}`
     });
-
-    addActivityLog(`${user?.name} updated clock for match #${match.match_id} to ${period} ${str}`);
   };
 
   const parseTime = (t: string) => {
@@ -300,34 +339,37 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const toggleTimer = () => {
     if (match.clock_status === "running") {
       const { secs, str } = parseTime(time);
-      updateMatchLiveState(match.match_id, { 
-        clock_status: "paused",
-        remaining_time: str,
-        remaining_seconds: secs
-      });
       setTime(str);
+      recordLiveGameAction({
+        matchId: match.match_id,
+        clockStatus: "paused",
+        remainingTime: str,
+        remainingSeconds: secs,
+        lastClockUpdate: Date.now(),
+        activityLogMessage: `${user?.name || "Official"} paused clock at ${str}`
+      });
     } else {
-      if (match.status !== "live") {
-        updateMatchStatus(match.match_id, "live");
-      }
       let t = time;
       if (!t || t === "0:00" || t === "0") {
          t = match.sport === "Basketball" ? "10:00" : (match.sport === "Volleyball" ? "0:00" : "10:00");
       }
       const { secs, str } = parseTime(t);
-      updateMatchLiveState(match.match_id, {
-        clock_status: "running",
-        last_clock_update: Date.now(),
-        remaining_seconds: secs,
-        remaining_time: str
-      });
       setTime(str);
+      recordLiveGameAction({
+        matchId: match.match_id,
+        matchStatus: "live",
+        clockStatus: "running",
+        lastClockUpdate: Date.now(),
+        remainingSeconds: secs,
+        remainingTime: str,
+        activityLogMessage: `${user?.name || "Official"} started clock at ${str}`
+      });
     }
   };
 
   const handleTimeout = (isTeam1: boolean) => {
-    let t1outs = match.timeouts_team1 || 0;
-    let t2outs = match.timeouts_team2 || 0;
+    let t1outs = match.timeouts_team1 !== undefined ? match.timeouts_team1 : 2;
+    let t2outs = match.timeouts_team2 !== undefined ? match.timeouts_team2 : 2;
     
     if (isTeam1) {
       t1outs = Math.max(0, t1outs - 1);
@@ -335,55 +377,75 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       t2outs = Math.max(0, t2outs - 1);
     }
 
-    // Pause timer if running
     const { secs, str } = parseTime(time);
     setTime(str);
-    updateMatchLiveState(match.match_id, {
-      timeouts_team1: t1outs,
-      timeouts_team2: t2outs,
-      clock_status: "paused",
-      remaining_time: str,
-      remaining_seconds: secs,
-      recent_action: {
+
+    recordLiveGameAction({
+      matchId: match.match_id,
+      timeoutsTeam1: t1outs,
+      timeoutsTeam2: t2outs,
+      clockStatus: "paused",
+      remainingTime: str,
+      remainingSeconds: secs,
+      recentAction: {
         player_name: "TEAM",
         action: "TIMEOUT",
         team_id: isTeam1 ? t1!.team_id : t2!.team_id,
         timestamp: new Date().toISOString()
-      }
+      },
+      activityLogMessage: `${user?.name || "Official"} recorded a TIMEOUT for ${isTeam1 ? t1?.team_name : t2?.team_name}`
     });
-
-    addActivityLog(`${user?.name} recorded a TIMEOUT for ${isTeam1 ? t1?.team_name : t2?.team_name}`);
   };
 
   const handleSetTimeout = (isTeam1: boolean, val: number) => {
-    let t1outs = match.timeouts_team1 || 0;
-    let t2outs = match.timeouts_team2 || 0;
+    let t1outs = match.timeouts_team1 !== undefined ? match.timeouts_team1 : 2;
+    let t2outs = match.timeouts_team2 !== undefined ? match.timeouts_team2 : 2;
     if (isTeam1) t1outs = Math.max(0, val);
     else t2outs = Math.max(0, val);
     
-    updateMatchLiveState(match.match_id, {
-      timeouts_team1: t1outs,
-      timeouts_team2: t2outs,
+    recordLiveGameAction({
+      matchId: match.match_id,
+      timeoutsTeam1: t1outs,
+      timeoutsTeam2: t2outs
     });
   };
 
   const handleEndMatch = () => {
     if (window.confirm("Are you sure you want to end this match?")) {
-      updateMatchLiveState(match.match_id, { 
-        clock_status: "paused",
-        remaining_time: time
+      recordLiveGameAction({
+        matchId: match.match_id,
+        clockStatus: "paused",
+        remainingTime: time,
+        matchStatus: "completed",
+        activityLogMessage: `${user?.name || "Official"} ended match #${match.match_id}`
       });
-      updateMatchStatus(match.match_id, "completed");
       onClose();
     }
   };
 
   return (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "#f8fafc", zIndex: 2000, display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif" }}>
-      {/* Top Black Bar */}
-      <div style={{ background: "#18181b", padding: "16px 24px", color: "white", fontSize: "20px", fontWeight: "500", letterSpacing: "0.5px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>Live Match Controller</span>
+      {/* Top Black Bar with Title and Remaining Timeouts Tracker */}
+      <div style={{ background: "#18181b", padding: "12px 24px", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #27272a" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "18px", fontWeight: "700", letterSpacing: "0.5px" }}>Live Match Controller</span>
+          <span style={{ background: "#27272a", color: "#a1a1aa", fontSize: "11px", padding: "3px 10px", borderRadius: "100px", fontWeight: "600" }}>
+            {match.sport} • {match.category}
+          </span>
+        </div>
 
+        {/* Top Remaining Timeouts Tracker */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <span style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", color: "#a1a1aa", fontWeight: "700" }}>Remaining Timeouts:</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#27272a", padding: "4px 14px", borderRadius: "100px", border: "1px solid #3f3f46" }}>
+            <span style={{ fontSize: "12px", color: "#93c5fd", fontWeight: "700" }}>{t1?.team_name || "Home"}:</span>
+            <span style={{ fontSize: "14px", color: "#ffffff", fontWeight: "900" }}>{match.timeouts_team1 !== undefined ? match.timeouts_team1 : 2}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#27272a", padding: "4px 14px", borderRadius: "100px", border: "1px solid #3f3f46" }}>
+            <span style={{ fontSize: "12px", color: "#fca5a5", fontWeight: "700" }}>{t2?.team_name || "Away"}:</span>
+            <span style={{ fontSize: "14px", color: "#ffffff", fontWeight: "900" }}>{match.timeouts_team2 !== undefined ? match.timeouts_team2 : 2}</span>
+          </div>
+        </div>
       </div>
 
       {subToast && (
@@ -393,12 +455,25 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       )}
 
       {/* Header section */}
-      <div style={{ background: "#ffffff", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+      <div style={{ background: "#ffffff", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "20px", color: "#64748b" }}>✕</button>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "#2563eb", fontWeight: "600", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>{match.category} {match.sport}</span>
-            <span style={{ color: "#64748b", fontSize: "11px", marginTop: "4px" }}>{match.game_label} - Match #{match.match_id}</span>
+            <span style={{ color: "#2563eb", fontWeight: "700", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>{match.category} {match.sport}</span>
+            <span style={{ color: "#64748b", fontSize: "11px", marginTop: "2px" }}>{match.game_label} - Match #{match.match_id}</span>
+          </div>
+          
+          {/* Editable Referee manual input */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f8fafc", padding: "4px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", marginLeft: "12px" }}>
+            <span style={{ fontSize: "10px", color: "#64748b", textTransform: "uppercase", fontWeight: "700" }}>Referee:</span>
+            <input 
+              type="text" 
+              value={referee} 
+              onChange={e => setReferee(e.target.value)} 
+              onBlur={() => updateMatchDetails(match.match_id, match.venue || "", referee, period, time)}
+              placeholder="Type referee name..." 
+              style={{ background: "transparent", border: "none", color: "#1e293b", fontSize: "12px", fontWeight: "600", outline: "none", width: "140px" }}
+            />
           </div>
         </div>
 
