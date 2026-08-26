@@ -17,6 +17,7 @@ function GameNotifications() {
   const navigate = useNavigate();
   const [activeNotifications, setActiveNotifications] = useState<any[]>([]);
   const prevLiveMatches = useRef<string[]>([]);
+  const prevActions = useRef<Record<string, string>>({});
   
   useEffect(() => {
     // Detect new live matches
@@ -49,6 +50,29 @@ function GameNotifications() {
         }
       });
     }
+
+    // Detect recent actions
+    currentLive.forEach(m => {
+      const currentActionTime = m.recent_action?.timestamp;
+      const prevActionTime = prevActions.current[m.match_id];
+      
+      if (currentActionTime && currentActionTime !== prevActionTime && prevActionTime !== undefined) {
+        const notif = {
+          id: Date.now() + Math.random(),
+          title: `Update: ${m.sport} ${m.category ? `(${m.category})` : ''}`,
+          body: `${m.recent_action!.player_name} - ${m.recent_action!.action} (Score: ${m.score_team1} - ${m.score_team2})`,
+          sport: m.sport,
+          match_id: m.match_id
+        };
+        
+        setActiveNotifications(prev => [notif, ...prev]);
+        
+        setTimeout(() => {
+          setActiveNotifications(prev => prev.filter(n => n.id !== notif.id));
+        }, 5000);
+      }
+      prevActions.current[m.match_id] = currentActionTime || "";
+    });
     
     prevLiveMatches.current = currentLiveIds;
   }, [db.matches, db.teams]);

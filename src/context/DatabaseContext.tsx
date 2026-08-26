@@ -82,6 +82,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const isWritingRef = useRef<boolean>(false);
   const pendingWriteRef = useRef<boolean>(false);
   const syncTimerRef = useRef<any>(null);
+  const lastWriteTimeRef = useRef<number>(0);
   const latestDbRef = useRef<Database>(db);
 
   // Keep latestDbRef in sync with state
@@ -145,6 +146,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     }
 
     isWritingRef.current = true;
+    lastWriteTimeRef.current = Date.now();
     const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
     const dataToSave = latestDbRef.current;
 
@@ -161,7 +163,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         isWritingRef.current = false;
         if (pendingWriteRef.current) {
           pendingWriteRef.current = false;
-          syncTimerRef.current = setTimeout(flushToFirestore, 20);
+          // Wait to respect the throttle limit before writing again
+          syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 800 - (Date.now() - lastWriteTimeRef.current)));
         }
       });
   }, []);
@@ -169,13 +172,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const scheduleFirestoreSync = useCallback((immediate: boolean = false) => {
     if (syncTimerRef.current) {
       clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
     }
 
-    if (immediate) {
+    const now = Date.now();
+    const timeSinceLastWrite = now - lastWriteTimeRef.current;
+    const THROTTLE_MS = 800; // Keep under Firestore's 1 write/sec limit
+
+    if (immediate && timeSinceLastWrite >= THROTTLE_MS && !isWritingRef.current) {
       flushToFirestore();
     } else {
-      // 30ms window batches simultaneous micro-updates without human-perceptible delay
-      syncTimerRef.current = setTimeout(flushToFirestore, 30);
+      // Throttle rapid updates to prevent Firestore listeners from stalling
+      const delay = immediate ? Math.max(30, THROTTLE_MS - timeSinceLastWrite) : 1500;
+      syncTimerRef.current = setTimeout(flushToFirestore, delay);
     }
   }, [flushToFirestore]);
 
