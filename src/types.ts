@@ -47,6 +47,7 @@ export interface Match {
   t1_rounds?: number;
   t2_rounds?: number;
   mvp_id?: number;
+  active_player_ids?: number[];
 }
 
 export interface PlayerStat {
@@ -76,6 +77,7 @@ export interface PlayerStat {
   errors?: number;
   service_wins?: number;
   fouls?: number;
+  substitutions?: number;
 }
 
 export interface User {

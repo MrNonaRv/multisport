@@ -1376,7 +1376,12 @@ const getStat = (playerId: number, statKey: string) => {
                         <tbody>
                           {p.map(player => (
                             <tr key={player.player_id} style={{ borderBottom: "1px solid var(--panel-bg)" }}>
-                              <td style={{ padding: 12, fontWeight: 700, fontSize: 14 }}>{player.player_name} <span style={{ color: "#475569", fontSize: 12, marginLeft: 4 }}>#{player.jersey_number}</span></td>
+                              <td style={{ padding: 12, fontWeight: 700, fontSize: 14 }}>
+                                {player.player_name} <span style={{ color: "#475569", fontSize: 12, marginLeft: 4 }}>#{player.jersey_number}</span>
+                                {match.active_player_ids?.includes(player.player_id) && match.status === "live" && (
+                                  <span style={{ marginLeft: 8, background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6 }}>ON COURT</span>
+                                )}
+                              </td>
                               {sportStats.map(st => (
                                 <td key={st} style={{ padding: 12, textAlign: "center", fontWeight: 800, color: "var(--text-main)" }}>
                                   {getStat(player.player_id, st)}

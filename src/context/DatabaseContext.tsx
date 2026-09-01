@@ -15,6 +15,7 @@ interface LiveGameActionParams {
   sport?: string;
   statKey?: keyof PlayerStat;
   statIncrement?: number;
+  ptsIncrement?: number;
   scoreTeam1?: number;
   scoreTeam2?: number;
   t1Rounds?: number;
@@ -27,6 +28,8 @@ interface LiveGameActionParams {
   winner?: string | null;
   timeoutsTeam1?: number;
   timeoutsTeam2?: number;
+  currentPeriod?: string;
+  activePlayerIds?: number[];
   recentAction?: {
     player_name: string;
     action: string;
@@ -623,6 +626,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           const newStats = [...nextDb.playerStats];
           const currentVal = (newStats[existingStatIndex] as any)[params.statKey] || 0;
           (newStats[existingStatIndex] as any)[params.statKey] = Math.max(0, currentVal + params.statIncrement);
+          if (params.ptsIncrement && params.statKey !== "points") {
+            const currentPts = newStats[existingStatIndex].points || 0;
+            newStats[existingStatIndex].points = Math.max(0, currentPts + params.ptsIncrement);
+          }
           nextDb.playerStats = newStats;
         } else {
           const newId = nextDb.playerStats.length > 0 ? Math.max(...nextDb.playerStats.map(s => s.stat_id)) + 1 : 1;
@@ -633,6 +640,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             sport: params.sport || "",
             [params.statKey]: Math.max(0, params.statIncrement)
           };
+          if (params.ptsIncrement && params.statKey !== "points") {
+            newStat.points = Math.max(0, params.ptsIncrement);
+          }
           nextDb.playerStats = [...nextDb.playerStats, newStat];
         }
       }
@@ -653,6 +663,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         if (params.lastClockUpdate !== undefined) updatedM.last_clock_update = params.lastClockUpdate;
         if (params.timeoutsTeam1 !== undefined) updatedM.timeouts_team1 = params.timeoutsTeam1;
         if (params.timeoutsTeam2 !== undefined) updatedM.timeouts_team2 = params.timeoutsTeam2;
+        if (params.currentPeriod !== undefined) updatedM.current_period = params.currentPeriod;
+        if (params.activePlayerIds !== undefined) updatedM.active_player_ids = params.activePlayerIds;
         if (params.recentAction !== undefined) updatedM.recent_action = params.recentAction || undefined;
 
         if (params.matchStatus !== undefined) {

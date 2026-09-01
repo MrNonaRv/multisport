@@ -15,40 +15,46 @@ const QUICK_ACTIONS: Record<string, { label: string, stat: keyof PlayerStat, pts
     { label: "Foul", stat: "fouls", pts: 0, inc: 1 },
   ],
   "Volleyball": [
-    { label: "Point", stat: "points", pts: 1, inc: 1 },
-    { label: "Kill", stat: "kills", pts: 0, inc: 1 },
-    { label: "Ace", stat: "aces", pts: 0, inc: 1 },
-    { label: "Block", stat: "blocks", pts: 0, inc: 1 },
+    { label: "Point (+1)", stat: "points", pts: 1, inc: 1 },
+    { label: "Kill (+1)", stat: "kills", pts: 1, inc: 1 },
+    { label: "Ace (+1)", stat: "aces", pts: 1, inc: 1 },
+    { label: "Block (+1)", stat: "blocks", pts: 1, inc: 1 },
+    { label: "Dig", stat: "digs", pts: 0, inc: 1 },
     { label: "Error", stat: "errors", pts: 0, inc: 1 },
   ],
   "Table Tennis": [
     { label: "Point (+1)", stat: "points", pts: 1, inc: 1 },
-    { label: "Ace", stat: "aces", pts: 0, inc: 1 },
-    { label: "Smash", stat: "smashes", pts: 0, inc: 1 },
-    { label: "Svc Win", stat: "service_wins", pts: 0, inc: 1 },
+    { label: "Ace (+1)", stat: "aces", pts: 1, inc: 1 },
+    { label: "Smash (+1)", stat: "smashes", pts: 1, inc: 1 },
+    { label: "Svc Win", stat: "service_wins", pts: 1, inc: 1 },
+    { label: "Error", stat: "errors", pts: 0, inc: 1 },
   ],
   "Badminton": [
     { label: "Point (+1)", stat: "points", pts: 1, inc: 1 },
-    { label: "Smash", stat: "smashes", pts: 0, inc: 1 },
-    { label: "Drop", stat: "drops", pts: 0, inc: 1 },
-    { label: "Clear", stat: "clears", pts: 0, inc: 1 },
+    { label: "Smash (+1)", stat: "smashes", pts: 1, inc: 1 },
+    { label: "Drop (+1)", stat: "drops", pts: 1, inc: 1 },
+    { label: "Clear (+1)", stat: "clears", pts: 1, inc: 1 },
+    { label: "Fault", stat: "errors", pts: 0, inc: 1 },
   ],
   "Sepak Takraw": [
     { label: "Point (+1)", stat: "points", pts: 1, inc: 1 },
-    { label: "Kick", stat: "kicks", pts: 0, inc: 1 },
-    { label: "Header", stat: "headers", pts: 0, inc: 1 },
-    { label: "Roll", stat: "rolls", pts: 0, inc: 1 },
+    { label: "Spike (+1)", stat: "kicks", pts: 1, inc: 1 },
+    { label: "Header (+1)", stat: "headers", pts: 1, inc: 1 },
+    { label: "Roll (+1)", stat: "rolls", pts: 1, inc: 1 },
+    { label: "Fault", stat: "errors", pts: 0, inc: 1 },
   ],
   "Arnis": [
     { label: "Point (+1)", stat: "points", pts: 1, inc: 1 },
-    { label: "Strike", stat: "strikes", pts: 0, inc: 1 },
+    { label: "Strike (+1)", stat: "strikes", pts: 1, inc: 1 },
     { label: "Block", stat: "blocks", pts: 0, inc: 1 },
-    { label: "Disarm", stat: "disarms", pts: 0, inc: 1 },
+    { label: "Disarm (+2)", stat: "disarms", pts: 2, inc: 1 },
+    { label: "Foul", stat: "fouls", pts: 0, inc: 1 },
   ],
   "Taekwondo": [
     { label: "Point (+1)", stat: "points", pts: 1, inc: 1 },
-    { label: "Kick", stat: "kicks", pts: 0, inc: 1 },
-    { label: "Punch", stat: "punches", pts: 0, inc: 1 },
+    { label: "Punch (+1)", stat: "punches", pts: 1, inc: 1 },
+    { label: "Body Kick (+2)", stat: "kicks", pts: 2, inc: 1 },
+    { label: "Head Kick (+3)", stat: "kicks", pts: 3, inc: 1 },
     { label: "Gam-jeom", stat: "gam_jeom", pts: 0, inc: 1 },
   ],
 };
@@ -85,39 +91,76 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const [actionHistory, setActionHistory] = useState<any[]>([]);
   const [showActivityLog, setShowActivityLog] = useState(false);
 
-  const [activePlayers, setActivePlayers] = useState<Set<number>>(new Set());
+  const [activePlayers, setActivePlayers] = useState<Set<number>>(() => {
+    if (match?.active_player_ids && match.active_player_ids.length > 0) {
+      return new Set(match.active_player_ids);
+    }
+    return new Set();
+  });
   const [subToast, setSubToast] = useState<string | null>(null);
   const [pendingSubOut, setPendingSubOut] = useState<Player | null>(null);
 
+  // Sync active players if updated from match object
+  useEffect(() => {
+    if (match?.active_player_ids && match.active_player_ids.length > 0) {
+      setActivePlayers(new Set(match.active_player_ids));
+    }
+  }, [match?.active_player_ids]);
+
   const showToast = (msg: string) => {
     setSubToast(msg);
-    setTimeout(() => setSubToast(null), 3500);
+    setTimeout(() => setSubToast(null), 4000);
   };
 
   const handleToggleActive = (p: Player) => {
     const isAct = activePlayers.has(p.player_id);
     const newSet = new Set(activePlayers);
+    const isTeam1 = p.team_id === match.team1_id;
+    const teamName = isTeam1 ? t1?.team_name : t2?.team_name;
+    let logMsg = "";
+    let actionLabel = "";
+
     if (isAct) {
       newSet.delete(p.player_id);
       setPendingSubOut(p);
       setTimeout(() => {
         setPendingSubOut(curr => curr?.player_id === p.player_id ? null : curr);
-      }, 6000);
-      showToast(`${p.player_name} subbed out.`);
+      }, 10000);
+      showToast(`${p.player_name} subbed out (${teamName})`);
+      logMsg = `${p.player_name} subbed out (${teamName})`;
+      actionLabel = `Subbed Out`;
     } else {
       newSet.add(p.player_id);
       if (pendingSubOut && pendingSubOut.team_id === p.team_id) {
-         const msg = `${p.player_name} substituted for ${pendingSubOut.player_name}`;
-         showToast(msg);
-         addActivityLog(msg);
-         setPendingSubOut(null);
+        logMsg = `${p.player_name} subbed in for ${pendingSubOut.player_name} (${teamName})`;
+        actionLabel = `Subbed in for ${pendingSubOut.player_name}`;
+        showToast(`${p.player_name} subbed in for ${pendingSubOut.player_name}`);
+        setPendingSubOut(null);
       } else {
-         const msg = `${p.player_name} checked into the game`;
-         showToast(msg);
-         addActivityLog(msg);
+        logMsg = `${p.player_name} checked into game (${teamName})`;
+        actionLabel = `Checked into game`;
+        showToast(`${p.player_name} checked into game`);
       }
     }
     setActivePlayers(newSet);
+
+    const recentAct = {
+      player_name: p.player_name,
+      action: actionLabel,
+      team_id: p.team_id,
+      timestamp: new Date().toISOString()
+    };
+
+    recordLiveGameAction({
+      matchId: match.match_id,
+      playerId: p.player_id,
+      sport: match.sport,
+      statKey: "substitutions",
+      statIncrement: 1,
+      activePlayerIds: Array.from(newSet),
+      recentAction: recentAct,
+      activityLogMessage: `${user?.name || "Official"}: ${logMsg}`
+    });
   };
 
   useEffect(() => {
@@ -163,6 +206,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       playerId: player.player_id,
       stat: action.stat,
       inc: action.inc,
+      pts: action.pts,
       oldS1: match.score_team1,
       oldS2: match.score_team2,
       oldR1: match.t1_rounds || 0,
@@ -272,6 +316,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       sport: match.sport,
       statKey: action.stat as any,
       statIncrement: action.inc,
+      ptsIncrement: action.pts,
       scoreTeam1: newS1,
       scoreTeam2: newS2,
       t1Rounds: t1_rounds,
@@ -294,6 +339,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       sport: match.sport,
       statKey: lastAction.stat,
       statIncrement: -lastAction.inc,
+      ptsIncrement: lastAction.pts ? -lastAction.pts : 0,
       scoreTeam1: lastAction.oldS1,
       scoreTeam2: lastAction.oldS2,
       t1Rounds: lastAction.oldR1,

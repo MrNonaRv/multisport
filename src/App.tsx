@@ -57,10 +57,35 @@ function GameNotifications() {
       const prevActionTime = prevActions.current[m.match_id];
       
       if (currentActionTime && currentActionTime !== prevActionTime && prevActionTime !== undefined) {
+        const t1 = db.teams.find(t => t.team_id === m.team1_id);
+        const t2 = db.teams.find(t => t.team_id === m.team2_id);
+        const actionTeam = m.recent_action!.team_id === t1?.team_id ? t1?.team_name : (m.recent_action!.team_id === t2?.team_id ? t2?.team_name : "");
+        const actionText = m.recent_action!.action;
+        const isSub = actionText.toLowerCase().includes("sub") || actionText.toLowerCase().includes("checked");
+        const isTimeout = actionText.toUpperCase().includes("TIMEOUT");
+
+        let title = `Update: ${m.sport} ${m.category ? `(${m.category})` : ''}`;
+        let body = "";
+
+        if (isSub) {
+          title = `🔄 Substitution: ${m.sport} ${m.category ? `(${m.category})` : ''}`;
+          body = `${m.recent_action!.player_name} (${actionTeam || 'Team'}) • ${actionText}`;
+        } else if (isTimeout) {
+          title = `⏱️ Timeout: ${m.sport} ${m.category ? `(${m.category})` : ''}`;
+          body = `${actionTeam || 'Team'} called a TIMEOUT`;
+        } else {
+          const scoreInfo = m.sport === "Basketball"
+            ? `Score: ${m.score_team1} - ${m.score_team2}`
+            : (m.t1_rounds !== undefined || m.t2_rounds !== undefined)
+              ? `Sets: ${m.t1_rounds || 0}-${m.t2_rounds || 0} (Pts: ${m.score_team1}-${m.score_team2})`
+              : `Score: ${m.score_team1} - ${m.score_team2}`;
+          body = `${m.recent_action!.player_name} (${actionTeam || 'Team'}) - ${actionText} [${scoreInfo}]`;
+        }
+
         const notif = {
           id: Date.now() + Math.random(),
-          title: `Update: ${m.sport} ${m.category ? `(${m.category})` : ''}`,
-          body: `${m.recent_action!.player_name} - ${m.recent_action!.action} (Score: ${m.score_team1} - ${m.score_team2})`,
+          title,
+          body,
           sport: m.sport,
           match_id: m.match_id
         };
@@ -69,7 +94,7 @@ function GameNotifications() {
         
         setTimeout(() => {
           setActiveNotifications(prev => prev.filter(n => n.id !== notif.id));
-        }, 5000);
+        }, 6000);
       }
       prevActions.current[m.match_id] = currentActionTime || "";
     });
