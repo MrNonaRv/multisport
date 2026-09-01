@@ -20,9 +20,6 @@ function GameNotifications() {
   const prevLiveMatches = useRef<string[]>([]);
   const prevActions = useRef<Record<string, string>>({});
   
-  // Do not show notifications on admin pages
-  if (loc.pathname.startsWith("/dashboard") || loc.pathname.startsWith("/login")) return null;
-
   useEffect(() => {
     // Detect new live matches
     const currentLive = db.matches.filter(m => m.status === "live");
@@ -106,6 +103,9 @@ function GameNotifications() {
     prevLiveMatches.current = currentLiveIds;
   }, [db.matches, db.teams]);
   
+  // Do not show notifications on admin pages
+  if (loc.pathname.startsWith("/dashboard") || loc.pathname.startsWith("/login")) return null;
+
   if (activeNotifications.length === 0) return null;
   
   return (
