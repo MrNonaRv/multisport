@@ -4,18 +4,19 @@ import { useDatabase } from './DatabaseContext';
 
 interface TeamContextType {
   teams: Team[];
+  loading: boolean;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
-  const { db } = useDatabase();
+  const { db, loading } = useDatabase();
   
   // Memoize teams to only re-render when teams actually change
-  const teams = useMemo(() => db.teams, [db.teams]);
+  const teams = useMemo(() => db?.teams || [], [db?.teams]);
 
   return (
-    <TeamContext.Provider value={{ teams }}>
+    <TeamContext.Provider value={{ teams, loading }}>
       {children}
     </TeamContext.Provider>
   );
