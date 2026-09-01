@@ -15,10 +15,14 @@ import { BouncingBallsBackground } from "./components/BouncingBallsBackground";
 function GameNotifications() {
   const { db } = useDatabase();
   const navigate = useNavigate();
+  const loc = useLocation();
   const [activeNotifications, setActiveNotifications] = useState<any[]>([]);
   const prevLiveMatches = useRef<string[]>([]);
   const prevActions = useRef<Record<string, string>>({});
   
+  // Do not show notifications on admin pages
+  if (loc.pathname.startsWith("/dashboard") || loc.pathname.startsWith("/login")) return null;
+
   useEffect(() => {
     // Detect new live matches
     const currentLive = db.matches.filter(m => m.status === "live");
@@ -105,7 +109,7 @@ function GameNotifications() {
   if (activeNotifications.length === 0) return null;
   
   return (
-    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ position: "fixed", top: 80, right: 24, zIndex: 9999, display: "flex", flexDirection: "column", gap: 12 }}>
       {activeNotifications.map(notif => {
         const c = COLORS[notif.sport as keyof typeof COLORS] || "#38bdf8";
         return (
