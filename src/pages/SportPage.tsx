@@ -63,8 +63,8 @@ const MatchCard = React.memo(({
 
   const isLive = m.status === "live";
   const isCompleted = m.status === "completed";
-  const t1Wins = isCompleted && m.winner === t1?.team_name;
-  const t2Wins = isCompleted && m.winner === t2?.team_name;
+  const t1Wins = isCompleted && (m.winner === t1?.team_name || (m.winner === null && m.score_team1 > m.score_team2));
+  const t2Wins = isCompleted && (m.winner === t2?.team_name || (m.winner === null && m.score_team2 > m.score_team1));
 
   const handleSave = () => {
     if (user?.role !== "ADMIN" && user?.role !== "TABULATOR") {
