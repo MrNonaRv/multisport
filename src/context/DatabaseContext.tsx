@@ -8,6 +8,7 @@ const STORAGE_KEY = "multisports_db_v7";
 const FIRESTORE_DOC_ID = "data/sports_db";
 
 let quotaExceeded = false;
+let globalSetQuotaExceeded: ((val: boolean) => void) | null = null;
 
 interface LiveGameActionParams {
   matchId: number;
@@ -42,6 +43,9 @@ interface LiveGameActionParams {
 interface DatabaseContextType {
   db: Database;
   loading: boolean;
+  isQuotaExceeded?: boolean;
+  adminNotifications: { id: string; message: string; type: "success" | "info" | "warning"; timestamp: number }[];
+  addAdminNotification: (message: string, type?: "success" | "info" | "warning") => void;
   updateMatchScore: (matchId: number, team1Score: number, team2Score: number) => void;
   updateMatchDetails: (matchId: number, venue: string, referee: string, current_period?: string, remaining_time?: string) => void;
   updateMatchStatus: (matchId: number, status: "completed" | "live" | "upcoming", winner?: string | null) => void;
@@ -92,8 +96,18 @@ interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted");
+  
+  if (isQuota) {
+    quotaExceeded = true;
+    if (globalSetQuotaExceeded) {
+      globalSetQuotaExceeded(true);
+    }
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -128,6 +142,29 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     return initDB();
   });
   const [loading, setLoading] = useState(true);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState<{ id: string; message: string; type: "success" | "info" | "warning"; timestamp: number }[]>([]);
+
+  const addAdminNotification = useCallback((message: string, type: "success" | "info" | "warning" = "success") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setAdminNotifications(prev => [
+      { id, message, type, timestamp: Date.now() },
+      ...prev
+    ]);
+    setTimeout(() => {
+      setAdminNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  }, []);
+
+  useEffect(() => {
+    globalSetQuotaExceeded = setIsQuotaExceeded;
+    if (quotaExceeded) {
+      setIsQuotaExceeded(true);
+    }
+    return () => {
+      globalSetQuotaExceeded = null;
+    };
+  }, []);
 
   const isWritingRef = useRef<boolean>(false);
   const pendingWriteRef = useRef<boolean>(false);
@@ -148,8 +185,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           if (event.data && event.data.type === "SYNC_DB" && event.data.payload) {
             if (event.data.senderId !== clientId.current) {
               const incoming = event.data.payload as Database;
-              setDb(incoming);
-              latestDbRef.current = incoming;
+              const currentLastUpdated = latestDbRef.current?.lastUpdated || 0;
+              const incomingLastUpdated = incoming.lastUpdated || 0;
+              if (incomingLastUpdated >= currentLastUpdated) {
+                setDb(incoming);
+                latestDbRef.current = incoming;
+              }
             }
           }
         };
@@ -162,8 +203,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       if (e.key === STORAGE_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue) as Database;
-          setDb(parsed);
-          latestDbRef.current = parsed;
+          const currentLastUpdated = latestDbRef.current?.lastUpdated || 0;
+          const incomingLastUpdated = parsed.lastUpdated || 0;
+          if (incomingLastUpdated >= currentLastUpdated) {
+            setDb(parsed);
+            latestDbRef.current = parsed;
+          }
         } catch (err) {
           console.error("Storage sync error:", err);
         }
@@ -242,6 +287,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       if (snapshot.exists()) {
         try {
           const parsed = snapshot.data() as Database;
+          
+          // Safety guard: do not let stale server snapshots overwrite fresher local or broadcasted state
+          const currentLastUpdated = latestDbRef.current?.lastUpdated || 0;
+          const incomingLastUpdated = parsed.lastUpdated || 0;
+          if (incomingLastUpdated < currentLastUpdated) {
+            console.log("Ignoring stale incoming server snapshot", { incomingLastUpdated, currentLastUpdated });
+            setLoading(false);
+            return;
+          }
+
           if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
           if (!parsed.teams) parsed.teams = [];
           if (!parsed.players) parsed.players = [];
@@ -376,7 +431,22 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         m.match_id === matchId ? { ...m, score_team1: team1Score, score_team2: team2Score } : m
       )
     }));
-  }, []);
+
+    setTimeout(() => {
+      const match = latestDbRef.current?.matches.find(m => m.match_id === matchId);
+      if (match) {
+        const t1 = latestDbRef.current?.teams.find(t => t.team_id === match.team1_id);
+        const t2 = latestDbRef.current?.teams.find(t => t.team_id === match.team2_id);
+        const scoreDisplay = match.sport !== "Basketball" 
+          ? `Sets: ${match.t1_rounds || 0}-${match.t2_rounds || 0} (Pts: ${team1Score}-${team2Score})`
+          : `${team1Score} - ${team2Score}`;
+        addAdminNotification(
+          `🎯 Score Updated: ${match.sport} • ${t1?.team_name || "Team 1"} vs ${t2?.team_name || "Team 2"} is now ${scoreDisplay}`,
+          "success"
+        );
+      }
+    }, 50);
+  }, [addAdminNotification]);
 
   const updateMatchDetails = useCallback((matchId: number, venue: string, referee: string, current_period?: string, remaining_time?: string) => {
     setDbAndSync(prev => ({
@@ -765,11 +835,38 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
       return nextDb;
     }, true);
-  }, [setDbAndSync]);
+
+    setTimeout(() => {
+      const match = latestDbRef.current?.matches.find(m => m.match_id === params.matchId);
+      if (match) {
+        const t1 = latestDbRef.current?.teams.find(t => t.team_id === match.team1_id);
+        const t2 = latestDbRef.current?.teams.find(t => t.team_id === match.team2_id);
+        
+        let message = "";
+        if (params.scoreTeam1 !== undefined || params.scoreTeam2 !== undefined) {
+          const scoreDisplay = match.sport !== "Basketball" 
+            ? `Sets: ${match.t1_rounds || 0}-${match.t2_rounds || 0} (Pts: ${match.score_team1}-${match.score_team2})`
+            : `${match.score_team1} - ${match.score_team2}`;
+          message = `🎯 Live Score Recorded: ${t1?.team_name || "Team 1"} vs ${t2?.team_name || "Team 2"} (${scoreDisplay})`;
+        } else if (params.recentAction) {
+          message = `⚡ Action Recorded: ${params.recentAction.player_name} (${params.recentAction.action})`;
+        } else if (params.activityLogMessage) {
+          message = `📝 ${params.activityLogMessage}`;
+        } else {
+          message = `✅ Live match updated successfully`;
+        }
+        
+        addAdminNotification(message, "success");
+      }
+    }, 50);
+  }, [addAdminNotification, setDbAndSync]);
 
   const contextValue = useMemo(() => ({
     db, 
     loading,
+    isQuotaExceeded,
+    adminNotifications,
+    addAdminNotification,
     updateMatchScore, 
     updateMatchDetails, 
     updateMatchStatus,
@@ -794,6 +891,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }), [
     db, 
     loading,
+    isQuotaExceeded,
+    adminNotifications,
+    addAdminNotification,
     updateMatchScore, 
     updateMatchDetails, 
     updateMatchStatus,

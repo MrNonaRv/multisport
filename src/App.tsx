@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogIn, Trophy, Activity, Users, Calendar, LayoutGrid, ChevronDown, Bell, Sun, Moon } from "lucide-react";
+import { Menu, X, LogIn, Trophy, Activity, Users, Calendar, LayoutGrid, ChevronDown, Bell, Sun, Moon, Check } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { useW, SPORTS, COLORS } from "./db";
 import { LOGO, NAV, HAM } from "./components/Shared";
@@ -154,8 +154,47 @@ function GameNotifications() {
   );
 }
 
+function AdminNotifications() {
+  const { adminNotifications } = useDatabase();
+  const loc = useLocation();
+
+  if (!loc.pathname.startsWith("/dashboard")) return null;
+  if (!adminNotifications || adminNotifications.length === 0) return null;
+
+  return (
+    <div style={{ position: "fixed", top: 80, right: 24, zIndex: 99999, display: "flex", flexDirection: "column", gap: 12 }}>
+      {adminNotifications.map(notif => (
+        <div 
+          key={notif.id}
+          style={{ 
+            background: "var(--panel-bg)", 
+            border: `2px solid #10b981`, 
+            borderRadius: 16, 
+            padding: "16px 20px", 
+            width: 320,
+            boxShadow: `0 10px 40px rgba(0,0,0,0.3), 0 0 15px rgba(16, 185, 129, 0.2)`,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            backdropFilter: "blur(10px)",
+            animation: "slideIn 0.3s ease-out forwards"
+          }}
+        >
+          <div style={{ background: `rgba(16, 185, 129, 0.1)`, padding: 8, borderRadius: 10, color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Check size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 900, color: "#10b981", fontSize: 13, marginBottom: 2 }}>RECORDED SUCCESSFULLY</div>
+            <div style={{ color: "var(--text-main)", fontSize: 13, fontWeight: 600, lineHeight: 1.3 }}>{notif.message}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
-  const { db } = useDatabase();
+  const { db, isQuotaExceeded } = useDatabase();
   const w = useW();
   const mob = w < 768;
   const [menu, setMenu] = useState(false);
@@ -184,7 +223,64 @@ function Layout({ children }: { children: React.ReactNode }) {
     <div className={isDark ? "dark" : ""} style={{ fontFamily: "'Exo 2','Segoe UI',sans-serif", minHeight: "100vh", color: "var(--text-main)", position: "relative" }}>
       <BouncingBallsBackground />
       <div style={{ position: "relative", zIndex: 10 }}>
+        {isQuotaExceeded && (
+          <div style={{
+            background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+            color: "#ffffff",
+            padding: "12px 24px",
+            textAlign: "center",
+            fontWeight: 700,
+            fontSize: "14px",
+            boxShadow: "0 4px 20px rgba(239, 68, 68, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+            zIndex: 99999,
+            position: "relative"
+          }}>
+            <span>⚠️ <strong>Firebase Quota Exceeded (Free Tier Daily Write Units):</strong> Writes to the live database are temporarily disabled. Your local state remains fully interactive, and the quota resets tomorrow. For unlimited limits, upgrade your plan.</span>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <a 
+                href="https://console.firebase.google.com/project/automatic-climate-zgxqk/firestore/databases/ai-studio-multisportstourn-d9b21812-4785-4395-9200-73f03ac81dc4/data?openUpgradeDialog=true"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: "#ffffff",
+                  color: "#b91c1c",
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  textDecoration: "none",
+                  fontWeight: 800,
+                  fontSize: "12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  transition: "opacity 0.2s"
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                Upgrade Database in Console
+              </a>
+              <a 
+                href="https://firebase.google.com/pricing#cloud-firestore"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "#fecaca",
+                  textDecoration: "underline",
+                  fontSize: "13px",
+                  fontWeight: "600"
+                }}
+              >
+                Pricing & Quotas Details
+              </a>
+            </div>
+          </div>
+        )}
         <GameNotifications />
+        <AdminNotifications />
         <style>{`
         :root {
           --bg: #f3f4f6;
