@@ -16,9 +16,13 @@ let databaseId = defaultConfig.firestoreDatabaseId || "(default)";
 if (customConfigStr) {
   try {
     const custom = JSON.parse(customConfigStr);
-    if (custom && custom.apiKey && custom.projectId) {
+    // Only use custom config if it matches the current project or is explicitly valid
+    if (custom && custom.apiKey && custom.projectId && custom.projectId === defaultConfig.projectId) {
       activeConfig = { ...activeConfig, ...custom };
       databaseId = custom.firestoreDatabaseId || "(default)";
+    } else {
+      // Clear outdated custom config from previous projects
+      localStorage.removeItem("custom_firebase_config");
     }
   } catch (e) {
     console.error("Invalid custom firebase config in localStorage", e);

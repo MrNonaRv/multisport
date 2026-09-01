@@ -7,8 +7,13 @@ import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, 
 const STORAGE_KEY = "multisports_db_v7";
 const FIRESTORE_DOC_ID = "data/sports_db";
 
-let quotaExceeded = typeof window !== "undefined" && window.sessionStorage?.getItem("firestore_quota_exceeded") === "true";
+let quotaExceeded = false;
 let globalSetQuotaExceeded: ((val: boolean) => void) | null = null;
+
+// Clear any stale quota flag from sessionStorage so new databases are never blocked
+if (typeof window !== "undefined" && window.sessionStorage) {
+  window.sessionStorage.removeItem("firestore_quota_exceeded");
+}
 
 interface LiveGameActionParams {
   matchId: number;
@@ -246,7 +251,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       syncTimerRef.current = null;
     }
 
-    if (quotaExceeded) return;
     if (!latestDbRef.current) return;
 
     if (isWritingRef.current) {
@@ -260,12 +264,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const dataToSave = latestDbRef.current;
 
     setDoc(docRef, dataToSave, { merge: false })
+      .then(() => {
+        // Successful sync to cloud
+      })
       .catch((err) => {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted") || errorMsg.toLowerCase().includes("unavailable");
+        const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted");
         if (isQuota) {
           quotaExceeded = true;
-          pendingWriteRef.current = false;
           if (globalSetQuotaExceeded) {
             globalSetQuotaExceeded(true);
           }
@@ -273,21 +279,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         try {
           handleFirestoreError(err, OperationType.WRITE, FIRESTORE_DOC_ID);
         } catch (e) {
-          console.warn("Firestore write sync error (operating in offline/local sync mode):", e);
+          console.warn("Firestore write sync notice:", e);
         }
       })
       .finally(() => {
         isWritingRef.current = false;
-        if (pendingWriteRef.current && !quotaExceeded) {
+        if (pendingWriteRef.current) {
           pendingWriteRef.current = false;
-          // Wait to respect the throttle limit before writing again
-          syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 800 - (Date.now() - lastWriteTimeRef.current)));
+          syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 300 - (Date.now() - lastWriteTimeRef.current)));
         }
       });
   }, []);
 
   const scheduleFirestoreSync = useCallback((immediate: boolean = false) => {
-    if (quotaExceeded) return;
     if (syncTimerRef.current) {
       clearTimeout(syncTimerRef.current);
       syncTimerRef.current = null;
@@ -295,13 +299,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     const now = Date.now();
     const timeSinceLastWrite = now - lastWriteTimeRef.current;
-    const THROTTLE_MS = 800; // Keep under Firestore's 1 write/sec limit
+    const THROTTLE_MS = 250; // Fast 250ms interval for live sports scoreboard updates
 
     if (immediate && timeSinceLastWrite >= THROTTLE_MS && !isWritingRef.current) {
       flushToFirestore();
     } else {
-      // Throttle rapid updates to prevent Firestore listeners from stalling
-      const delay = immediate ? Math.max(30, THROTTLE_MS - timeSinceLastWrite) : 1500;
+      const delay = immediate ? 50 : 300;
       syncTimerRef.current = setTimeout(flushToFirestore, delay);
     }
   }, [flushToFirestore]);
@@ -311,21 +314,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     testConnection().catch(() => {});
     const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
     
-    // Subscribe to changes
+    // Subscribe to real-time changes from Firestore cloud
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         try {
           const parsed = snapshot.data() as Database;
           
-          // Safety guard: do not let stale server snapshots overwrite fresher local or broadcasted state
-          const currentLastUpdated = latestDbRef.current?.lastUpdated || 0;
-          const incomingLastUpdated = parsed.lastUpdated || 0;
-          if (incomingLastUpdated < currentLastUpdated) {
-            console.log("Ignoring stale incoming server snapshot", { incomingLastUpdated, currentLastUpdated });
-            setLoading(false);
-            return;
-          }
-
           if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
           if (!parsed.teams) parsed.teams = [];
           if (!parsed.players) parsed.players = [];
@@ -342,6 +336,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
           setDb(parsed);
           latestDbRef.current = parsed;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          } catch {}
           setLoading(false);
         } catch (e) {
           console.error("Failed to parse Firestore data", e);
@@ -481,7 +478,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, score_team1: team1Score, score_team2: team2Score } : m
       )
-    }));
+    }), true);
 
     setTimeout(() => {
       const match = latestDbRef.current?.matches.find(m => m.match_id === matchId);
@@ -497,7 +494,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         );
       }
     }, 50);
-  }, [addAdminNotification]);
+  }, [addAdminNotification, setDbAndSync]);
 
   const updateMatchDetails = useCallback((matchId: number, venue: string, referee: string, current_period?: string, remaining_time?: string) => {
     setDbAndSync(prev => ({
@@ -505,8 +502,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, venue, referee, current_period, remaining_time } : m
       )
-    }));
-  }, []);
+    }), true);
+  }, [setDbAndSync]);
 
   const updateMatchStatus = useCallback((matchId: number, status: "completed" | "live" | "upcoming", winner?: string | null) => {
     setDbAndSync(prev => {
@@ -615,8 +612,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       }
 
       return nextDb;
-    });
-  }, []);
+    }, true);
+  }, [setDbAndSync]);
 
   const updateMatchLiveState = useCallback((matchId: number, updates: Partial<Match>) => {
     setDbAndSync(prev => ({
@@ -624,8 +621,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       matches: prev.matches.map(m => 
         m.match_id === matchId ? { ...m, ...updates } : m
       )
-    }));
-  }, []);
+    }), true);
+  }, [setDbAndSync]);
 
   const deleteMatch = useCallback((matchId: number) => {
     const numId = Number(matchId);
