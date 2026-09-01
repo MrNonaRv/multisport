@@ -169,20 +169,29 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - match?.last_clock_update!) / 1000);
         let currentRemaining = match?.remaining_seconds! - elapsed;
-        if (currentRemaining <= 0) {
-           currentRemaining = 0;
-           recordLiveGameAction({
-             matchId: match!.match_id,
-             clockStatus: "paused",
-             remainingTime: "0:00",
-             remainingSeconds: 0,
-             activityLogMessage: `Match #${match!.match_id} clock reached 0:00`
-           });
-        }
         
-        const m = Math.floor(currentRemaining / 60);
-        const s = currentRemaining % 60;
-        setTime(`${m}:${s.toString().padStart(2, "0")}`);
+        if (match.sport === 'Volleyball') {
+           // Volleyball timer counts up
+           const timeSinceStart = Math.floor((Date.now() - match?.last_clock_update!) / 1000);
+           const m = Math.floor(timeSinceStart / 60);
+           const s = timeSinceStart % 60;
+           setTime(`${m}:${s.toString().padStart(2, "0")}`);
+        } else {
+           // Count down logic
+           if (currentRemaining <= 0) {
+              currentRemaining = 0;
+              recordLiveGameAction({
+                matchId: match!.match_id,
+                clockStatus: "paused",
+                remainingTime: "0:00",
+                remainingSeconds: 0,
+                activityLogMessage: `Match #${match!.match_id} clock reached 0:00`
+              });
+           }
+           const m = Math.floor(currentRemaining / 60);
+           const s = currentRemaining % 60;
+           setTime(`${m}:${s.toString().padStart(2, "0")}`);
+        }
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -397,7 +406,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
     } else {
       let t = time;
       if (!t || t === "0:00" || t === "0") {
-         t = match.sport === "Basketball" ? "10:00" : (match.sport === "Volleyball" ? "0:00" : "10:00");
+         t = match.sport === "Basketball" ? "10:00" : (match.sport === "Volleyball" ? "15:00" : "10:00");
       }
       const { secs, str } = parseTime(t);
       setTime(str);

@@ -559,7 +559,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       const newId = prev.matches.length > 0 ? Math.max(...prev.matches.map(m => m.match_id)) + 1 : 1;
       return {
         ...prev,
-        matches: [...prev.matches, { ...match, match_id: newId }]
+        matches: [...prev.matches, { ...match, match_id: newId, status: match.status || "upcoming" }]
       };
     });
   }, []);
