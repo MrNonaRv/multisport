@@ -1,57 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isSignedIn() { return request.auth != null; }
-    
-    // Specifically allow sports_db
-    match /data/sports_db {
-      allow read: if true;
-    }
-
-    // Default deny for everything else
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    match /users/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
-      allow write: if false; // Users cannot modify their own roles
-    }
-
-    match /teams/{teamId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
-    }
-    
-    match /matches/{matchId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
-    }
-    
-    match /players/{playerId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
-    }
-    
-    match /playerStats/{statId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
-    }
-    
-    match /brackets/{bracketId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
-    }
-    
-    match /activityLogs/{logId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
-    }
-    
-    match /referees/{refereeId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Simplified for now
+      allow read, write: if true;
     }
   }
 }

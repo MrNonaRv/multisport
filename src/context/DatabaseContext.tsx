@@ -341,7 +341,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       const newId = prev.activityLogs.length > 0 ? Math.max(...prev.activityLogs.map(l => l.id)) + 1 : 1;
       return {
         ...prev,
-        activityLogs: [{ id: newId, message, timestamp: new Date().toISOString() }, ...prev.activityLogs].slice(0, 20) // Keep last 20
+        activityLogs: [{ id: newId, message, timestamp: new Date().toISOString() }, ...prev.activityLogs].slice(0, 50) // Keep last 50
       };
     });
   }, []);
@@ -765,7 +765,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       // 3. Activity log
       if (params.activityLogMessage) {
         const newId = nextDb.activityLogs.length > 0 ? Math.max(...nextDb.activityLogs.map(l => l.id)) + 1 : 1;
-        nextDb.activityLogs = [{ id: newId, message: params.activityLogMessage, timestamp: new Date().toISOString() }, ...nextDb.activityLogs].slice(0, 20);
+        nextDb.activityLogs = [{ id: newId, message: params.activityLogMessage, timestamp: new Date().toISOString() }, ...nextDb.activityLogs].slice(0, 50);
       }
 
       return nextDb;

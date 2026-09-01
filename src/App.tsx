@@ -9,8 +9,6 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Archives from "./pages/Archives";
 import { DatabaseProvider, useDatabase } from "./context/DatabaseContext";
-import { MatchProvider } from "./context/MatchContext";
-import { TeamProvider } from "./context/TeamContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { BouncingBallsBackground } from "./components/BouncingBallsBackground";
 
@@ -409,13 +407,9 @@ function MainApp() {
 export default function App() {
   return (
     <DatabaseProvider>
-      <MatchProvider>
-        <TeamProvider>
-          <AuthProvider>
-            <MainApp />
-          </AuthProvider>
-        </TeamProvider>
-      </MatchProvider>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
     </DatabaseProvider>
   );
 }
