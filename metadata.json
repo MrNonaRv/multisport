@@ -1,5 +1,8 @@
 {
   "name": "MultiSports Tournament Hub",
   "description": "A comprehensive sports tournament management application with live scores, standings, and leaderboards.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

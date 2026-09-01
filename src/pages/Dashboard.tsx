@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { Navigate, Link } from "react-router-dom";
-import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog } from "lucide-react";
+import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server } from "lucide-react";
 import { card, PP, Badge } from "../components/Shared";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
-import { Match, Player, Team, User, Bracket, BracketMatch } from "../types";
+import { Match, Player, Team, User, Bracket, BracketMatch, Database } from "../types";
 import { S_STATS, useW } from "../db";
 import { printHtml } from "../utils/print";
+import { firebaseConfig } from "../lib/firebase";
 
 const InlineDeleteButton = ({ 
   onConfirm, 
@@ -157,12 +158,24 @@ export default function Dashboard() {
     addSport,
     addReferee,
     deleteReferee,
+    exportDatabaseJSON,
+    importDatabaseJSON,
+    forceSyncToCloud,
+    transferToNewFirebase,
+    isQuotaExceeded
   } = useDatabase();
 
-  const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets">("matches");
+  const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets" | "system" | "database">("matches");
   const w = useW();
   const mob = w < 768;
   const [isSidebarOpen, setIsSidebarOpen] = useState(!mob);
+
+  // Database Migration State
+  const [customConfigInput, setCustomConfigInput] = useState("");
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferSuccess, setTransferSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update sidebar on mobile change
   useEffect(() => {
@@ -436,6 +449,7 @@ export default function Dashboard() {
         { id: "players", label: "Players", icon: Users, color: "#10b981" }, 
         { id: "brackets", label: "Brackets", icon: Trophy, color: "#8b5cf6" }, 
         { id: "system", label: "Active Sport", icon: PlusCircle, color: "#f59e0b" },
+        { id: "database", label: "Database & Cloud", icon: DatabaseIcon, color: "#06b6d4" },
         { id: "activity", label: "Activity Logs", icon: Activity, color: "#64748b" },
         { id: "users", label: "Admin Users", icon: UserCog, color: "#ef4444" }
       ]);
@@ -1082,6 +1096,319 @@ export default function Dashboard() {
     </div>
   );
 
+  const handleTransferDatabase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTransferError(null);
+    setTransferSuccess(false);
+
+    if (!customConfigInput.trim()) {
+      setTransferError("Please paste your Firebase Web Configuration snippet.");
+      return;
+    }
+
+    let config: any = null;
+    try {
+      config = JSON.parse(customConfigInput);
+    } catch (err) {
+      const apiKey = customConfigInput.match(/apiKey["']?\s*:\s*["']([^"']+)["']/)?.[1];
+      const authDomain = customConfigInput.match(/authDomain["']?\s*:\s*["']([^"']+)["']/)?.[1];
+      const projectId = customConfigInput.match(/projectId["']?\s*:\s*["']([^"']+)["']/)?.[1];
+      const storageBucket = customConfigInput.match(/storageBucket["']?\s*:\s*["']([^"']+)["']/)?.[1];
+      const messagingSenderId = customConfigInput.match(/messagingSenderId["']?\s*:\s*["']([^"']+)["']/)?.[1];
+      const appId = customConfigInput.match(/appId["']?\s*:\s*["']([^"']+)["']/)?.[1];
+
+      if (apiKey && projectId) {
+        config = {
+          apiKey,
+          authDomain: authDomain || `${projectId}.firebaseapp.com`,
+          projectId,
+          storageBucket: storageBucket || `${projectId}.appspot.com`,
+          messagingSenderId: messagingSenderId || "",
+          appId: appId || "",
+          firestoreDatabaseId: "(default)"
+        };
+      }
+    }
+
+    if (!config || !config.apiKey || !config.projectId) {
+      setTransferError("Could not detect valid apiKey and projectId in the pasted text. Please copy the complete const firebaseConfig = { ... } from your Firebase console.");
+      return;
+    }
+
+    setIsTransferring(true);
+    try {
+      const result = await transferToNewFirebase(config);
+      if (result.success) {
+        setTransferSuccess(true);
+        showMsg("s", `Transferred all records to project ${config.projectId}! Reloading...`);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1800);
+      } else {
+        setTransferError(result.error || "Transfer failed. Please ensure Firestore is created in your Firebase Console.");
+      }
+    } catch (err: any) {
+      setTransferError(err.message || "Failed to transfer data.");
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  const handleFileRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        const ok = await importDatabaseJSON(parsed);
+        if (ok) {
+          showMsg("s", "Database restored from JSON successfully!");
+        }
+      } catch (err) {
+        showMsg("e", "Failed to parse JSON file.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleResetFirebaseConfig = () => {
+    if (window.confirm("Are you sure you want to reset to the default workspace Firebase database?")) {
+      localStorage.removeItem("custom_firebase_config");
+      showMsg("s", "Reset to default Firebase database. Reloading...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
+
+  const renderDatabaseTab = () => {
+    const isCustom = !!localStorage.getItem("custom_firebase_config");
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* Status Header */}
+        <div style={{ ...card, background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)", border: "1px solid #06b6d440", boxShadow: "0 0 25px rgba(6, 182, 212, 0.15)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(6, 182, 212, 0.15)", color: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Cloud size={28} />
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Active Firebase Database</h2>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 800, background: isQuotaExceeded ? "rgba(245,158,11,0.2)" : "rgba(16,185,129,0.2)", color: isQuotaExceeded ? "#f59e0b" : "#10b981" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: isQuotaExceeded ? "#f59e0b" : "#10b981" }} />
+                    {isQuotaExceeded ? "Offline / Local Sync Mode" : isCustom ? "Custom Firebase Project Connected" : "Cloud Synchronized"}
+                  </span>
+                </div>
+                <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
+                  Project ID: <strong style={{ color: "#38bdf8" }}>{firebaseConfig.projectId}</strong> • Stored at <code style={{ background: "var(--border-color)", padding: "2px 6px", borderRadius: 4 }}>data/sports_db</code>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => forceSyncToCloud()}
+                style={{ background: "rgba(6, 182, 212, 0.15)", color: "#06b6d4", border: "1px solid rgba(6, 182, 212, 0.4)", padding: "10px 18px", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <RefreshCw size={16} /> Force Cloud Push
+              </button>
+              {isCustom && (
+                <button
+                  type="button"
+                  onClick={handleResetFirebaseConfig}
+                  style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "10px 18px", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+                >
+                  Reset to Default Firebase
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Stats Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border-color)" }}>
+            <div style={{ background: "var(--bg)", padding: "12px 16px", borderRadius: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#38bdf8" }}>{db.matches.length}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Matches</div>
+            </div>
+            <div style={{ background: "var(--bg)", padding: "12px 16px", borderRadius: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#10b981" }}>{db.teams.length}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Teams</div>
+            </div>
+            <div style={{ background: "var(--bg)", padding: "12px 16px", borderRadius: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#f59e0b" }}>{db.players.length}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Players</div>
+            </div>
+            <div style={{ background: "var(--bg)", padding: "12px 16px", borderRadius: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#8b5cf6" }}>{db.brackets.length}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Brackets</div>
+            </div>
+            <div style={{ background: "var(--bg)", padding: "12px 16px", borderRadius: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#ec4899" }}>{db.referees?.length || 0}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Referees</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Transfer to Your Firebase Account */}
+        <div style={{ ...card, border: "2px solid #38bdf8", background: "linear-gradient(180deg, var(--panel-bg) 0%, var(--bg) 100%)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <UploadCloud size={24} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Transfer All Data to Your Firebase Account</h2>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+                Connect your personal Firebase project (like <strong>My Sports Tournament</strong>) and migrate 100% of your records automatically.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: "rgba(56, 189, 248, 0.06)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: 12, padding: 16, marginBottom: 20 }}>
+            <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 800, color: "#38bdf8" }}>3 Easy Steps in Your Firebase Console:</h4>
+            <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--text-main)" }}>
+              <li>
+                On your Firebase Console overview screen, click <strong>`+ Add app`</strong> and choose <strong>Web (`&lt;/&gt;`)</strong>.
+              </li>
+              <li>
+                In the left navigation under <strong>Databases and storage</strong>, click <strong>Firestore Database</strong> &rarr; <strong>Create Database</strong> (start in test mode).
+              </li>
+              <li>
+                Copy the <code>firebaseConfig = &#123; ... &#125;</code> code block and paste it in the box below, then click <strong>Transfer All Data</strong>.
+              </li>
+            </ol>
+          </div>
+
+          <form onSubmit={handleTransferDatabase} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>
+                Paste Your Firebase Web App Config (JavaScript snippet or JSON):
+              </label>
+              <textarea
+                value={customConfigInput}
+                onChange={e => setCustomConfigInput(e.target.value)}
+                placeholder={`const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  authDomain: "my-sports-tournament.firebaseapp.com",\n  projectId: "my-sports-tournament",\n  storageBucket: "my-sports-tournament.firebasestorage.app",\n  messagingSenderId: "123456789",\n  appId: "1:123456789:web:abcdef"\n};`}
+                rows={7}
+                style={{
+                  width: "100%",
+                  background: "var(--bg)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: 10,
+                  padding: 14,
+                  color: "var(--text-main)",
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  resize: "vertical"
+                }}
+              />
+            </div>
+
+            {transferError && (
+              <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", borderRadius: 8, padding: 12, color: "#ef4444", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertCircle size={18} /> {transferError}
+              </div>
+            )}
+
+            {transferSuccess && (
+              <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid #10b981", borderRadius: 8, padding: 12, color: "#10b981", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+                <CheckCircle2 size={18} /> Data transferred successfully! Reloading workspace to connect...
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isTransferring}
+              style={{
+                background: "linear-gradient(135deg, #0284c7, #06b6d4)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                padding: "14px 24px",
+                fontWeight: 900,
+                fontSize: 15,
+                cursor: isTransferring ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                boxShadow: "0 4px 15px rgba(6, 182, 212, 0.35)",
+                opacity: isTransferring ? 0.7 : 1
+              }}
+            >
+              {isTransferring ? (
+                <>
+                  <RefreshCw size={18} className="animate-spin" /> Transferring all teams, matches, brackets &amp; stats...
+                </>
+              ) : (
+                <>
+                  <ArrowRight size={18} /> Transfer All Data &amp; Connect to New Firebase
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Offline Backup & Restore */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
+          <div style={card}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(16, 185, 129, 0.15)", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <DownloadCloud size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Export JSON Backup</h3>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Download a complete, offline backup copy of all data.</p>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+              This file contains all teams, players, scheduled/completed matches, real-time box scores, brackets, and audit history.
+            </p>
+            <button
+              type="button"
+              onClick={exportDatabaseJSON}
+              style={{ width: "100%", background: "#10b981", color: "#fff", border: "none", padding: "12px", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <Download size={16} /> Download Complete Backup (.json)
+            </button>
+          </div>
+
+          <div style={card}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <HardDrive size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Restore from File</h3>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Import and restore database records from a JSON file.</p>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+              Select a previously exported tournament JSON file to restore all matches, teams, and tournament brackets.
+            </p>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              onChange={handleFileRestore}
+              style={{ display: "none" }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ width: "100%", background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "12px", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <UploadCloud size={16} /> Choose &amp; Restore Backup File
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   // --- Box Score Modal ---
   const renderBoxScoreModal = () => {
@@ -1290,10 +1617,13 @@ const getStat = (playerId: number, statKey: string) => {
                 {activeTab === "players" && "Players"}
                 {activeTab === "brackets" && "Tournament Brackets"}
                 {activeTab === "system" && "Active Sport"}
+                {activeTab === "database" && "Database & Cloud Migration"}
                 {activeTab === "users" && "Admin Users"}
                 {activeTab === "activity" && "Activity Logs"}
               </h1>
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Manage your {activeTab} data seamlessly.</p>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
+                {activeTab === "database" ? "Manage cloud synchronization, transfer data to your Firebase account, or export backups." : `Manage your ${activeTab} data seamlessly.`}
+              </p>
             </div>
           </div>
           {!isSidebarOpen && !mob && (
@@ -1317,6 +1647,7 @@ const getStat = (playerId: number, statKey: string) => {
           {activeTab === "players" && user?.role === "ADMIN" && renderPlayersTab()}
           {activeTab === "brackets" && user?.role === "ADMIN" && renderBracketsTab()}
           {activeTab === "system" && user?.role === "ADMIN" && renderSystemTab()}
+          {activeTab === "database" && user?.role === "ADMIN" && renderDatabaseTab()}
           {activeTab === "users" && user?.role === "ADMIN" && renderUsersTab()}
           {activeTab === "activity" && user?.role === "ADMIN" && renderActivityTab()}
         </div>

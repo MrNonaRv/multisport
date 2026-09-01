@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect, useRef } from "react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-import { db as firestoreDb, auth } from "../lib/firebase";
+import { db as firestoreDb, auth, testConnection } from "../lib/firebase";
 import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
 const STORAGE_KEY = "multisports_db_v7";
 const FIRESTORE_DOC_ID = "data/sports_db";
 
-let quotaExceeded = false;
+let quotaExceeded = typeof window !== "undefined" && window.sessionStorage?.getItem("firestore_quota_exceeded") === "true";
 let globalSetQuotaExceeded: ((val: boolean) => void) | null = null;
 
 interface LiveGameActionParams {
@@ -67,6 +67,10 @@ interface DatabaseContextType {
   addReferee: (referee: Omit<Referee, "referee_id">) => void;
   deleteReferee: (refereeId: number) => void;
   recordLiveGameAction: (params: LiveGameActionParams) => void;
+  exportDatabaseJSON: () => void;
+  importDatabaseJSON: (importedDb: Database) => Promise<boolean>;
+  forceSyncToCloud: () => Promise<boolean>;
+  transferToNewFirebase: (newConfig: any) => Promise<{ success: boolean; error?: string }>;
 }
 
 enum OperationType {
@@ -97,10 +101,15 @@ interface FirestoreErrorInfo {
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errorMsg = error instanceof Error ? error.message : String(error);
-  const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted");
+  const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted") || errorMsg.toLowerCase().includes("unavailable");
   
   if (isQuota) {
     quotaExceeded = true;
+    try {
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        window.sessionStorage.setItem("firestore_quota_exceeded", "true");
+      }
+    } catch {}
     if (globalSetQuotaExceeded) {
       globalSetQuotaExceeded(true);
     }
@@ -121,9 +130,14 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     },
     operationType,
     path
+  };
+
+  if (isQuota) {
+    console.warn("Firestore operating in local/offline storage mode due to quota limits:", errInfo);
+    return;
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -247,11 +261,24 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     setDoc(docRef, dataToSave, { merge: false })
       .catch((err) => {
-        handleFirestoreError(err, OperationType.WRITE, FIRESTORE_DOC_ID);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted") || errorMsg.toLowerCase().includes("unavailable");
+        if (isQuota) {
+          quotaExceeded = true;
+          pendingWriteRef.current = false;
+          if (globalSetQuotaExceeded) {
+            globalSetQuotaExceeded(true);
+          }
+        }
+        try {
+          handleFirestoreError(err, OperationType.WRITE, FIRESTORE_DOC_ID);
+        } catch (e) {
+          console.warn("Firestore write sync error (operating in offline/local sync mode):", e);
+        }
       })
       .finally(() => {
         isWritingRef.current = false;
-        if (pendingWriteRef.current) {
+        if (pendingWriteRef.current && !quotaExceeded) {
           pendingWriteRef.current = false;
           // Wait to respect the throttle limit before writing again
           syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 800 - (Date.now() - lastWriteTimeRef.current)));
@@ -260,6 +287,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scheduleFirestoreSync = useCallback((immediate: boolean = false) => {
+    if (quotaExceeded) return;
     if (syncTimerRef.current) {
       clearTimeout(syncTimerRef.current);
       syncTimerRef.current = null;
@@ -280,6 +308,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   // Read from Firestore on mount and listen to real-time changes
   useEffect(() => {
+    testConnection().catch(() => {});
     const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
     
     // Subscribe to changes
@@ -322,7 +351,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, FIRESTORE_DOC_ID);
+      setLoading(false);
+      try {
+        handleFirestoreError(error, OperationType.GET, FIRESTORE_DOC_ID);
+      } catch (err) {
+        console.warn("Firestore onSnapshot error (operating in offline/local sync mode):", err);
+      }
     });
 
     return () => unsubscribe();
@@ -906,6 +940,68 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     }, 50);
   }, [addAdminNotification, setDbAndSync]);
 
+  const exportDatabaseJSON = useCallback(() => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    const dateStr = new Date().toISOString().split("T")[0];
+    downloadAnchor.setAttribute("download", `multisports_tournament_backup_${dateStr}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    addAdminNotification("Complete tournament records exported as JSON backup!", "success");
+  }, [db, addAdminNotification]);
+
+  const importDatabaseJSON = useCallback(async (importedDb: Database) => {
+    try {
+      if (!importedDb.sports || !importedDb.teams || !importedDb.matches) {
+        throw new Error("Invalid tournament backup JSON format");
+      }
+      const updated = {
+        ...importedDb,
+        lastUpdated: Date.now()
+      };
+      setDbAndSync(updated, true);
+      addAdminNotification("Database imported successfully and synced to cloud!", "success");
+      return true;
+    } catch (err: any) {
+      addAdminNotification(`Import failed: ${err.message}`, "warning");
+      return false;
+    }
+  }, [setDbAndSync, addAdminNotification]);
+
+  const forceSyncToCloud = useCallback(async () => {
+    try {
+      const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
+      await setDoc(docRef, latestDbRef.current);
+      addAdminNotification("All records successfully pushed and synced to Firestore!", "success");
+      return true;
+    } catch (err: any) {
+      addAdminNotification(`Cloud sync failed: ${err.message}`, "warning");
+      return false;
+    }
+  }, [addAdminNotification]);
+
+  const transferToNewFirebase = useCallback(async (targetConfig: any) => {
+    try {
+      const { uploadDataToTargetFirebase } = await import("../lib/firebase");
+      await uploadDataToTargetFirebase(targetConfig, latestDbRef.current);
+      localStorage.setItem("custom_firebase_config", JSON.stringify(targetConfig));
+      try {
+        sessionStorage.removeItem("firestore_quota_exceeded");
+      } catch {}
+      quotaExceeded = false;
+      if (globalSetQuotaExceeded) {
+        globalSetQuotaExceeded(false);
+      }
+      addAdminNotification("All data transferred to new Firebase project successfully!", "success");
+      return { success: true };
+    } catch (err: any) {
+      console.error("Transfer error", err);
+      return { success: false, error: err.message || String(err) };
+    }
+  }, [addAdminNotification]);
+
   const contextValue = useMemo(() => ({
     db, 
     loading,
@@ -932,7 +1028,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addSport,
     addReferee,
     deleteReferee,
-    recordLiveGameAction
+    recordLiveGameAction,
+    exportDatabaseJSON,
+    importDatabaseJSON,
+    forceSyncToCloud,
+    transferToNewFirebase
   }), [
     db, 
     loading,
@@ -959,7 +1059,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addSport,
     addReferee,
     deleteReferee,
-    recordLiveGameAction
+    recordLiveGameAction,
+    exportDatabaseJSON,
+    importDatabaseJSON,
+    forceSyncToCloud,
+    transferToNewFirebase
   ]);
 
   return (
