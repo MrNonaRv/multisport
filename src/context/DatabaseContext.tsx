@@ -286,7 +286,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         isWritingRef.current = false;
         if (pendingWriteRef.current) {
           pendingWriteRef.current = false;
-          syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 300 - (Date.now() - lastWriteTimeRef.current)));
+          syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 50 - (Date.now() - lastWriteTimeRef.current)));
         }
       });
   }, []);
@@ -299,12 +299,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     const now = Date.now();
     const timeSinceLastWrite = now - lastWriteTimeRef.current;
-    const THROTTLE_MS = 250; // Fast 250ms interval for live sports scoreboard updates
+    const THROTTLE_MS = 50; // Ultra-fast 50ms interval for real-time live scoreboards
 
     if (immediate && timeSinceLastWrite >= THROTTLE_MS && !isWritingRef.current) {
       flushToFirestore();
     } else {
-      const delay = immediate ? 50 : 300;
+      const delay = immediate ? 10 : 100;
       syncTimerRef.current = setTimeout(flushToFirestore, delay);
     }
   }, [flushToFirestore]);

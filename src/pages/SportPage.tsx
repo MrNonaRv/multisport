@@ -90,6 +90,19 @@ const MatchCard = React.memo(({
   const [editRounds1, setEditRounds1] = useState<number | string>(m.t1_rounds || 0);
   const [editRounds2, setEditRounds2] = useState<number | string>(m.t2_rounds || 0);
 
+  useEffect(() => {
+    if (!isEditing) {
+      setEditVenue(m.venue || "");
+      setEditReferee(m.referee || "");
+      setEditPeriod(m.current_period || "");
+      setEditTime(m.remaining_time || "");
+      setEditScore1(m.score_team1);
+      setEditScore2(m.score_team2);
+      setEditRounds1(m.t1_rounds || 0);
+      setEditRounds2(m.t2_rounds || 0);
+    }
+  }, [m, isEditing]);
+
   const [displayTime, setDisplayTime] = useState(m.remaining_time || "");
 
   useEffect(() => {
