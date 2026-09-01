@@ -418,11 +418,18 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteReferee = useCallback((refereeId: number) => {
-    setDbAndSync(prev => ({
-      ...prev,
-      referees: prev.referees.filter(r => r.referee_id !== refereeId)
-    }));
-  }, []);
+    const numId = Number(refereeId);
+    let refName = "";
+    setDbAndSync(prev => {
+      const r = prev.referees.find(item => Number(item.referee_id) === numId);
+      if (r) refName = r.name;
+      return {
+        ...prev,
+        referees: prev.referees.filter(r => Number(r.referee_id) !== numId)
+      };
+    }, true);
+    addAdminNotification(`🗑️ Deleted referee: ${refName || `Referee #${numId}`}`, "info");
+  }, [addAdminNotification, setDbAndSync]);
 
   const updateMatchScore = useCallback((matchId: number, team1Score: number, team2Score: number) => {
     setDbAndSync(prev => ({
@@ -577,12 +584,28 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteMatch = useCallback((matchId: number) => {
-    setDbAndSync(prev => ({
-      ...prev,
-      matches: prev.matches.filter(m => m.match_id !== matchId),
-      playerStats: prev.playerStats.filter(s => s.match_id !== matchId)
-    }));
-  }, []);
+    const numId = Number(matchId);
+    let deletedInfo = "";
+
+    setDbAndSync(prev => {
+      const matchToDelete = prev.matches.find(m => Number(m.match_id) === numId);
+      if (matchToDelete) {
+        const t1 = prev.teams.find(t => Number(t.team_id) === Number(matchToDelete.team1_id));
+        const t2 = prev.teams.find(t => Number(t.team_id) === Number(matchToDelete.team2_id));
+        deletedInfo = `${matchToDelete.sport}: ${t1?.team_name || 'Team 1'} vs ${t2?.team_name || 'Team 2'}`;
+      }
+      return {
+        ...prev,
+        matches: prev.matches.filter(m => Number(m.match_id) !== numId),
+        playerStats: prev.playerStats.filter(s => Number(s.match_id) !== numId)
+      };
+    }, true);
+
+    addAdminNotification(`🗑️ Deleted match: ${deletedInfo || `Match #${numId}`}`, "info");
+    if (deletedInfo) {
+      addActivityLog(`Deleted match: ${deletedInfo}`);
+    }
+  }, [addAdminNotification, addActivityLog, setDbAndSync]);
 
   const addTeam = useCallback((team: Omit<Team, "team_id">) => {
     setDbAndSync(prev => {
@@ -597,17 +620,25 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const updateTeam = useCallback((teamId: number, team: Partial<Team>) => {
     setDbAndSync(prev => ({
       ...prev,
-      teams: prev.teams.map(t => t.team_id === teamId ? { ...t, ...team } : t)
+      teams: prev.teams.map(t => Number(t.team_id) === Number(teamId) ? { ...t, ...team } : t)
     }));
   }, []);
 
   const deleteTeam = useCallback((teamId: number) => {
-    setDbAndSync(prev => ({
-      ...prev,
-      teams: prev.teams.filter(t => t.team_id !== teamId),
-      players: prev.players.filter(p => p.team_id !== teamId)
-    }));
-  }, []);
+    const numId = Number(teamId);
+    let teamName = "";
+    setDbAndSync(prev => {
+      const t = prev.teams.find(item => Number(item.team_id) === numId);
+      if (t) teamName = t.team_name;
+      return {
+        ...prev,
+        teams: prev.teams.filter(t => Number(t.team_id) !== numId),
+        players: prev.players.filter(p => Number(p.team_id) !== numId),
+        matches: prev.matches.filter(m => Number(m.team1_id) !== numId && Number(m.team2_id) !== numId)
+      };
+    }, true);
+    addAdminNotification(`🗑️ Deleted team: ${teamName || `Team #${numId}`}`, "info");
+  }, [addAdminNotification, setDbAndSync]);
 
   const addPlayer = useCallback((player: Omit<Player, "player_id">) => {
     setDbAndSync(prev => {
@@ -622,17 +653,24 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const updatePlayer = useCallback((playerId: number, player: Partial<Player>) => {
     setDbAndSync(prev => ({
       ...prev,
-      players: prev.players.map(p => p.player_id === playerId ? { ...p, ...player } : p)
+      players: prev.players.map(p => Number(p.player_id) === Number(playerId) ? { ...p, ...player } : p)
     }));
   }, []);
 
   const deletePlayer = useCallback((playerId: number) => {
-    setDbAndSync(prev => ({
-      ...prev,
-      players: prev.players.filter(p => p.player_id !== playerId),
-      playerStats: prev.playerStats.filter(s => s.player_id !== playerId)
-    }));
-  }, []);
+    const numId = Number(playerId);
+    let playerName = "";
+    setDbAndSync(prev => {
+      const p = prev.players.find(item => Number(item.player_id) === numId);
+      if (p) playerName = p.player_name;
+      return {
+        ...prev,
+        players: prev.players.filter(p => Number(p.player_id) !== numId),
+        playerStats: prev.playerStats.filter(s => Number(s.player_id) !== numId)
+      };
+    }, true);
+    addAdminNotification(`🗑️ Deleted player: ${playerName || `Player #${numId}`}`, "info");
+  }, [addAdminNotification, setDbAndSync]);
 
   const addMatch = useCallback((match: Omit<Match, "match_id">) => {
     setDbAndSync(prev => {
@@ -641,7 +679,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         ...prev,
         matches: [...prev.matches, { ...match, match_id: newId, status: match.status || "upcoming" }]
       };
-    });
+    }, true);
   }, []);
 
   const updatePlayerStat = useCallback((matchId: number, playerId: number, sport: string, statKey: keyof PlayerStat, increment: number) => {
@@ -674,15 +712,22 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         ...prev,
         users: [...prev.users, { ...user, user_id: newId }]
       };
-    });
+    }, true);
   }, []);
 
   const deleteUser = useCallback((userId: number) => {
-    setDbAndSync(prev => ({
-      ...prev,
-      users: prev.users.filter(u => u.user_id !== userId)
-    }));
-  }, []);
+    const numId = Number(userId);
+    let userName = "";
+    setDbAndSync(prev => {
+      const u = prev.users.find(item => Number(item.user_id) === numId);
+      if (u) userName = u.name;
+      return {
+        ...prev,
+        users: prev.users.filter(u => Number(u.user_id) !== numId)
+      };
+    }, true);
+    addAdminNotification(`🗑️ Deleted user: ${userName || `User #${numId}`}`, "info");
+  }, [addAdminNotification, setDbAndSync]);
 
   const updateBracket = useCallback((sport: string, bracket: Bracket) => {
     setDbAndSync(prev => {

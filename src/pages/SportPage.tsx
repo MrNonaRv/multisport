@@ -1,12 +1,59 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
-import { Trophy, ArrowRight, Activity } from "lucide-react";
+import { Trophy, ArrowRight, Activity, Trash2 } from "lucide-react";
 import { useW, SPORT_THEMES, S_STATS } from "../db";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAuth } from "../context/AuthContext";
 import { Match, Team, User } from "../types";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
 import { printHtml } from "../utils/print";
+
+const InlineDeleteButton = ({ 
+  onConfirm, 
+  title = "Delete", 
+  label = "Delete?", 
+  size = 14 
+}: { 
+  onConfirm: () => void; 
+  title?: string; 
+  label?: string; 
+  size?: number;
+}) => {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(239, 68, 68, 0.15)", padding: "2px 6px", borderRadius: 4, border: "1px solid #ef4444" }}>
+        <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 800 }}>{label}</span>
+        <button 
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onConfirm(); setConfirming(false); }} 
+          style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 3, padding: "2px 5px", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+        >
+          Yes
+        </button>
+        <button 
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setConfirming(false); }} 
+          style={{ background: "transparent", color: "var(--text-muted)", border: "none", padding: "2px 3px", fontSize: 10, cursor: "pointer" }}
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button 
+      type="button"
+      title={title}
+      onClick={(e) => { e.stopPropagation(); setConfirming(true); }} 
+      style={{ background: "transparent", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#ef4444", borderRadius: 4, padding: "3px 6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}
+    >
+      <Trash2 size={size} /> Delete
+    </button>
+  );
+};
 
 const MatchCard = React.memo(({ 
   m, 
@@ -18,7 +65,8 @@ const MatchCard = React.memo(({
   updateMatchScore,
   updateMatchLiveState,
   setLiveControlMatch,
-  onViewBoxScore
+  onViewBoxScore,
+  deleteMatch
 }: { 
   m: Match; 
   t1: Team | undefined; 
@@ -30,6 +78,7 @@ const MatchCard = React.memo(({
   updateMatchLiveState: (id: number, updates: Partial<Match>) => void;
   setLiveControlMatch: (id: number) => void;
   onViewBoxScore: (id: number) => void;
+  deleteMatch?: (id: number) => void;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editVenue, setEditVenue] = useState(m.venue || "");
@@ -262,7 +311,7 @@ const MatchCard = React.memo(({
                 {m.referee && <div style={{ display: "flex", alignItems: "center", gap: 6 }}>👤 Ref: {m.referee}</div>}
               </div>
               {(user?.role === "ADMIN" || user?.role === "TABULATOR") && (
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {isLive && (
                     <button 
                       onClick={() => setLiveControlMatch(m.match_id)}
@@ -287,6 +336,14 @@ const MatchCard = React.memo(({
                   >
                     Edit
                   </button>
+                  {deleteMatch && (
+                    <InlineDeleteButton 
+                      onConfirm={() => deleteMatch(m.match_id)} 
+                      title="Delete match" 
+                      label="Delete?" 
+                      size={12} 
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -310,7 +367,7 @@ const MatchCard = React.memo(({
 export default function SportPage() {
   const { sportName } = useParams();
   const sport = sportName ? sportName.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : "Basketball";
-  const { db, updateMatchDetails, updateMatchScore, updateMatchLiveState, addMatch } = useDatabase();
+  const { db, updateMatchDetails, updateMatchScore, updateMatchLiveState, addMatch, deleteMatch } = useDatabase();
   const { user } = useAuth();
   const w = useW();
   const mob = w < 768;
@@ -574,6 +631,7 @@ export default function SportPage() {
                     updateMatchLiveState={updateMatchLiveState}
                     setLiveControlMatch={setLiveControlMatch}
                     onViewBoxScore={setPublicBoxScoreMatch}
+                    deleteMatch={deleteMatch}
                   />
                 ))}
               </div>

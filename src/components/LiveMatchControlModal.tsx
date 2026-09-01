@@ -99,6 +99,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   });
   const [subToast, setSubToast] = useState<string | null>(null);
   const [pendingSubOut, setPendingSubOut] = useState<Player | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   // Sync active players if updated from match object
   useEffect(() => {
@@ -466,16 +467,15 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   };
 
   const handleEndMatch = () => {
-    if (window.confirm("Are you sure you want to end this match?")) {
-      recordLiveGameAction({
-        matchId: match.match_id,
-        clockStatus: "paused",
-        remainingTime: time,
-        matchStatus: "completed",
-        activityLogMessage: `${user?.name || "Official"} ended match #${match.match_id}`
-      });
-      onClose();
-    }
+    recordLiveGameAction({
+      matchId: match.match_id,
+      clockStatus: "paused",
+      remainingTime: time,
+      matchStatus: "completed",
+      activityLogMessage: `${user?.name || "Official"} ended match #${match.match_id}`
+    });
+    setConfirmEnd(false);
+    onClose();
   };
 
   return (
@@ -545,9 +545,27 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
           <button onClick={toggleTimer} style={{ background: "white", border: "1px solid #e2e8f0", color: "#475569", padding: "8px 16px", borderRadius: "100px", fontWeight: "600", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"} onMouseOut={e => e.currentTarget.style.background = "white"}>
              {match.clock_status === "running" ? "⏸ PAUSE CLOCK" : "▶ START CLOCK"}
           </button>
-          <button onClick={handleEndMatch} style={{ background: "#ef4444", border: "none", color: "white", padding: "8px 24px", borderRadius: "100px", fontWeight: "600", fontSize: "12px", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)" }} onMouseOver={e => e.currentTarget.style.background = "#dc2626"} onMouseOut={e => e.currentTarget.style.background = "#ef4444"}>
-            END MATCH
-          </button>
+          {confirmEnd ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(239, 68, 68, 0.15)", padding: "4px 12px", borderRadius: "100px", border: "1px solid #ef4444" }}>
+              <span style={{ fontSize: "11px", color: "#dc2626", fontWeight: "700" }}>End match now?</span>
+              <button 
+                onClick={handleEndMatch}
+                style={{ background: "#ef4444", border: "none", color: "white", padding: "4px 12px", borderRadius: "100px", fontWeight: "700", fontSize: "11px", cursor: "pointer" }}
+              >
+                Yes, End
+              </button>
+              <button 
+                onClick={() => setConfirmEnd(false)}
+                style={{ background: "transparent", border: "none", color: "#64748b", padding: "4px 8px", fontSize: "11px", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmEnd(true)} style={{ background: "#ef4444", border: "none", color: "white", padding: "8px 24px", borderRadius: "100px", fontWeight: "600", fontSize: "12px", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)" }} onMouseOver={e => e.currentTarget.style.background = "#dc2626"} onMouseOut={e => e.currentTarget.style.background = "#ef4444"}>
+              END MATCH
+            </button>
+          )}
         </div>
       </div>
 

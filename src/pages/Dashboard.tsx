@@ -9,6 +9,53 @@ import { Match, Player, Team, User, Bracket, BracketMatch } from "../types";
 import { S_STATS, useW } from "../db";
 import { printHtml } from "../utils/print";
 
+const InlineDeleteButton = ({ 
+  onConfirm, 
+  title = "Delete", 
+  label = "Delete?", 
+  size = 16 
+}: { 
+  onConfirm: () => void; 
+  title?: string; 
+  label?: string; 
+  size?: number;
+}) => {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(239, 68, 68, 0.15)", padding: "2px 6px", borderRadius: 6, border: "1px solid #ef4444" }}>
+        <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 800 }}>{label}</span>
+        <button 
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onConfirm(); setConfirming(false); }} 
+          style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 900, cursor: "pointer" }}
+        >
+          Yes
+        </button>
+        <button 
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setConfirming(false); }} 
+          style={{ background: "transparent", color: "var(--text-muted)", border: "none", padding: "2px 4px", fontSize: 10, cursor: "pointer" }}
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button 
+      type="button"
+      title={title}
+      onClick={(e) => { e.stopPropagation(); setConfirming(true); }} 
+      style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", display: "inline-flex", alignItems: "center", padding: 4 }}
+    >
+      <Trash2 size={size} />
+    </button>
+  );
+};
+
 const DashboardMatchCard = React.memo(({ 
   m, 
   t1, 
@@ -29,7 +76,7 @@ const DashboardMatchCard = React.memo(({
           {m.category && <span style={Badge("var(--border-hover)")}>{m.category}</span>}
           {m.game_label && <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, padding: "2px 6px", background: "var(--bg)", borderRadius: 4, whiteSpace: "nowrap" }}>{m.game_label}</span>}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <select 
             value={m.status}
             onChange={e => handleStatusChange(m.match_id, e.target.value as any, m)}
@@ -39,8 +86,13 @@ const DashboardMatchCard = React.memo(({
             <option value="live">Live</option>
             <option value="completed">Completed</option>
           </select>
-          {userRole === "ADMIN" && (
-            <button onClick={() => { if(window.confirm('Delete match?')) deleteMatch(m.match_id); }} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}><Trash2 size={16} /></button>
+          {(userRole === "ADMIN" || userRole === "TABULATOR" || !userRole) && (
+            <InlineDeleteButton 
+              onConfirm={() => deleteMatch(m.match_id)} 
+              title="Delete match" 
+              label="Delete match?" 
+              size={16} 
+            />
           )}
         </div>
       </div>
@@ -739,7 +791,7 @@ export default function Dashboard() {
                   <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{t.sport} • Coach: {t.coach_name}</div>
                 </div>
               </div>
-              <button onClick={() => { if(window.confirm('Delete team?')) deleteTeam(t.team_id); }} style={{ background: "rgba(239, 68, 68, 0.1)", border: "none", color: "#ef4444", cursor: "pointer", padding: 12, borderRadius: 12 }}><Trash2 size={24} /></button>
+              <InlineDeleteButton onConfirm={() => deleteTeam(t.team_id)} title="Delete team" label="Delete team?" size={22} />
             </div>
           ))}
         </div>
@@ -807,7 +859,7 @@ export default function Dashboard() {
                 <div style={{ fontWeight: 900, fontSize: 18 }}>{p.player_name} <span style={{ color: "#38bdf8", fontSize: 16, marginLeft: 8 }}>#{p.jersey_number}</span></div>
                 <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{teamsMap[p.team_id]?.team_name} • {p.sport} • {teamsMap[p.team_id]?.category || "N/A"}</div>
               </div>
-              <button onClick={() => { if(window.confirm('Delete player?')) deletePlayer(p.player_id); }} style={{ background: "rgba(239, 68, 68, 0.1)", border: "none", color: "#ef4444", cursor: "pointer", padding: 12, borderRadius: 12 }}><Trash2 size={24} /></button>
+              <InlineDeleteButton onConfirm={() => deletePlayer(p.player_id)} title="Delete player" label="Delete player?" size={22} />
             </div>
           ))}
         </div>
@@ -979,7 +1031,7 @@ export default function Dashboard() {
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{u.email}</div>
               </div>
               {u.user_id !== user?.user_id && (
-                <button onClick={() => { if(window.confirm('Delete user?')) deleteUser(u.user_id); }} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}><Trash2 size={18} /></button>
+                <InlineDeleteButton onConfirm={() => deleteUser(u.user_id)} title="Delete user" label="Delete user?" size={18} />
               )}
             </div>
           ))}
