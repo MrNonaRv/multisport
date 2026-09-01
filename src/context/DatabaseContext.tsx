@@ -241,11 +241,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         try {
-          if (snapshot.metadata.hasPendingWrites) {
-            setLoading(false);
-            return;
-          }
-
           const parsed = snapshot.data() as Database;
           if (!parsed.sports) parsed.sports = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
           if (!parsed.teams) parsed.teams = [];
