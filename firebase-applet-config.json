@@ -1,12 +1,12 @@
 {
-  "projectId": "automatic-climate-zgxqk",
-  "appId": "1:557160494463:web:61726a040bf3571277964a",
-  "apiKey": "AIzaSyDdkUg7F-3rd028W8BbdTU9ZTki8-NESR0",
-  "authDomain": "automatic-climate-zgxqk.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-multisportstourn-d9b21812-4785-4395-9200-73f03ac81dc4",
-  "storageBucket": "automatic-climate-zgxqk.firebasestorage.app",
-  "messagingSenderId": "557160494463",
-  "measurementId": "",
-  "oAuthClientId": "557160494463-5s1ammqml6387824h0ecsk2dd6n7lmv2.apps.googleusercontent.com",
+  "projectId": "my-sports-tournament",
+  "appId": "1:942471269903:web:d40411cedbadad2a695d7a",
+  "apiKey": "AIzaSyAVbeC20hrR67BdjhRsXp-Oylb2HCRTXEA",
+  "authDomain": "my-sports-tournament.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "my-sports-tournament.firebasestorage.app",
+  "messagingSenderId": "942471269903",
+  "measurementId": "G-F1VG1DFDW4",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }

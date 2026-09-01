@@ -348,6 +348,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         }
       } else {
+        // Document does not exist yet in this Firestore database (e.g. freshly connected project).
+        // Automatically save the current database state so all clients can read it.
+        const currentData = latestDbRef.current || initDB();
+        setDoc(docRef, currentData, { merge: false })
+          .then(() => {
+            console.log("Initialized sports_db document in Firestore database successfully");
+          })
+          .catch((err) => {
+            console.warn("Auto-seeding initial Firestore document notice:", err);
+          });
         setLoading(false);
       }
     }, (error) => {

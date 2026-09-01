@@ -394,22 +394,26 @@ export default function SportPage() {
   const [newMatch, setNewMatch] = useState({
     team1_id: "",
     team2_id: "",
+    category: division === "All Divisions" ? "Men's Division" : division,
     match_date: "",
     game_label: "",
     venue: "",
     referee: "",
+    status: "upcoming",
+    score_team1: 0,
+    score_team2: 0,
     scheduled_start_time: ""
   });
 
-  const tms = useMemo(() => db.teams.filter(t => t.sport === sport && (!t.category || t.category === division)), [db.teams, sport, division]);
+  const tms = useMemo(() => db.teams.filter(t => t.sport === sport && (division === "All Divisions" || !t.category || t.category === division)), [db.teams, sport, division]);
   const pls = useMemo(() => db.players.filter(p => {
     const tm = db.teams.find(t => t.team_id === p.team_id);
-    return p.sport === sport && (!tm?.category || tm.category === division);
+    return p.sport === sport && (division === "All Divisions" || !tm?.category || tm.category === division);
   }), [db.players, sport, db.teams, division]);
-  const mtc = useMemo(() => db.matches.filter(m => m.sport === sport && (!m.category || m.category === division)), [db.matches, sport, division]);
+  const mtc = useMemo(() => db.matches.filter(m => m.sport === sport && (division === "All Divisions" || !m.category || m.category === division)), [db.matches, sport, division]);
   const sts = useMemo(() => db.playerStats.filter(s => {
     const m = db.matches.find(mx => mx.match_id === s.match_id);
-    return s.sport === sport && (!m?.category || m.category === division);
+    return s.sport === sport && (division === "All Divisions" || !m?.category || m.category === division);
   }), [db.playerStats, sport, db.matches, division]);
 
   const teamsMap = useMemo(() => {
@@ -543,6 +547,7 @@ export default function SportPage() {
                 outline: "none"
               }}
             >
+              <option value="All Divisions">All Divisions</option>
               <option value="Men's Division">Men's Division</option>
               <option value="Women's Division">Women's Division</option>
               <option value="Mixed">Mixed / Open</option>
@@ -1056,6 +1061,40 @@ ${allPlayersHtml}
                 </div>
               </div>
 
+              {/* Matches Preview on Home */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: 22, fontWeight: 900, margin: 0, textTransform: "uppercase", letterSpacing: -0.5 }}>RECENT & LIVE MATCHES</h3>
+                  <button onClick={() => setSec("matches")} style={{ background: "transparent", border: `1px solid ${theme.accent}`, color: theme.accent, padding: "6px 16px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 12, textTransform: "uppercase" }}>
+                    View All ({mtc.length})
+                  </button>
+                </div>
+                {mtc.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", background: "var(--panel-bg)", borderRadius: 16, border: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
+                    No matches found for {sport} ({division}). Switch division or add a new match.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(auto-fill, minmax(380px, 1fr))", gap: 20 }}>
+                    {mtc.slice(0, 4).map(m => (
+                      <MatchCard 
+                        key={m.match_id} 
+                        m={m} 
+                        t1={teamsMap[m.team1_id]} 
+                        t2={teamsMap[m.team2_id]} 
+                        theme={theme} 
+                        user={user} 
+                        updateMatchDetails={updateMatchDetails} 
+                        updateMatchScore={updateMatchScore}
+                        updateMatchLiveState={updateMatchLiveState}
+                        setLiveControlMatch={setLiveControlMatch}
+                        onViewBoxScore={setPublicBoxScoreMatch}
+                        deleteMatch={deleteMatch}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {db.brackets.find(b => b.sport === sport && (!b.category || b.category === division)) && (
                 <div style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", borderRadius: 24, padding: mob ? 30 : 50, border: "1px solid var(--border-color)", textAlign: "center" }}>
                   <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 10 }}>TOURNAMENT BRACKET</h3>
@@ -1174,14 +1213,60 @@ ${allPlayersHtml}
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 16, fontWeight: 800, color: "var(--text-main)", marginBottom: 8 }}>Venue</label>
-                <input 
-                  type="text" 
-                  value={newMatch.venue} 
-                  onChange={e => setNewMatch({...newMatch, venue: e.target.value})}
-                  placeholder="e.g. Court 1"
-                  style={{ width: "100%", padding: 16, borderRadius: 12, background: "rgba(0,0,0,0.3)", border: "2px solid var(--border-hover)", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}
-                />
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 }}>Division / Category</label>
+                <select 
+                  value={newMatch.category} 
+                  onChange={e => setNewMatch({...newMatch, category: e.target.value})}
+                  style={{ width: "100%", padding: 10, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-hover)", color: "var(--text-main)" }}
+                >
+                  <option value="Men's Division">Men's Division</option>
+                  <option value="Women's Division">Women's Division</option>
+                  <option value="Mixed">Mixed / Open</option>
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 }}>Status</label>
+                  <select 
+                    value={newMatch.status} 
+                    onChange={e => setNewMatch({...newMatch, status: e.target.value})}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-hover)", color: "var(--text-main)" }}
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="live">Live Now</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 }}>Venue</label>
+                  <input 
+                    type="text" 
+                    value={newMatch.venue} 
+                    onChange={e => setNewMatch({...newMatch, venue: e.target.value})}
+                    placeholder="e.g. Court 1"
+                    style={{ width: "100%", padding: 10, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-hover)", color: "var(--text-main)" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 }}>Team 1 Score</label>
+                  <input 
+                    type="number" 
+                    value={newMatch.score_team1} 
+                    onChange={e => setNewMatch({...newMatch, score_team1: parseInt(e.target.value) || 0})}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-hover)", color: "var(--text-main)" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 }}>Team 2 Score</label>
+                  <input 
+                    type="number" 
+                    value={newMatch.score_team2} 
+                    onChange={e => setNewMatch({...newMatch, score_team2: parseInt(e.target.value) || 0})}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-hover)", color: "var(--text-main)" }}
+                  />
+                </div>
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 16, fontWeight: 800, color: "var(--text-main)", marginBottom: 8 }}>Scheduled Start Time (Optional)</label>
@@ -1219,22 +1304,32 @@ ${allPlayersHtml}
                       alert("Team 1 and Team 2 cannot be the same.");
                       return;
                     }
+                    const t1Id = parseInt(newMatch.team1_id);
+                    const t2Id = parseInt(newMatch.team2_id);
+                    const s1 = Number(newMatch.score_team1) || 0;
+                    const s2 = Number(newMatch.score_team2) || 0;
+                    let winnerName: string | null = null;
+                    if (newMatch.status === "completed") {
+                      if (s1 > s2) winnerName = teamsMap[t1Id]?.team_name || "Team 1";
+                      else if (s2 > s1) winnerName = teamsMap[t2Id]?.team_name || "Team 2";
+                    }
                     addMatch({
                       sport: sport,
-                      team1_id: parseInt(newMatch.team1_id),
-                      team2_id: parseInt(newMatch.team2_id),
+                      category: newMatch.category || (division === "All Divisions" ? "Men's Division" : division),
+                      team1_id: t1Id,
+                      team2_id: t2Id,
                       match_date: newMatch.match_date,
-                      score_team1: 0,
-                      score_team2: 0,
-                      winner: null,
-                      status: "upcoming",
+                      score_team1: s1,
+                      score_team2: s2,
+                      winner: winnerName,
+                      status: newMatch.status as any || "upcoming",
                       game_label: newMatch.game_label,
                       venue: newMatch.venue,
                       referee: newMatch.referee,
                       scheduled_start_time: newMatch.scheduled_start_time
                     });
                     setShowAddMatchModal(false);
-                    setNewMatch({ team1_id: "", team2_id: "", match_date: "", game_label: "", venue: "", referee: "", scheduled_start_time: "" });
+                    setNewMatch({ team1_id: "", team2_id: "", category: division === "All Divisions" ? "Men's Division" : division, match_date: "", game_label: "", venue: "", referee: "", status: "upcoming", score_team1: 0, score_team2: 0, scheduled_start_time: "" });
                   }}
                   style={{ flex: 2, padding: 16, borderRadius: 12, border: "none", background: theme.accent, color: "var(--text-main)", fontWeight: 900, cursor: "pointer", fontSize: 18, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
                 >

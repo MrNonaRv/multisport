@@ -126,19 +126,30 @@ export default function Home() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {!upc.length && <div style={{ color: "#64748b", fontSize: 14, textAlign: "center", padding: 20 }}>No upcoming matches scheduled.</div>}
             {upc?.map(m => (
-              <div key={m.match_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border-color)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--border-color)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{S_ICONS[m.sport as keyof typeof S_ICONS]}</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)" }}>{gTeam(m.team1_id)?.team_name} vs {gTeam(m.team2_id)?.team_name}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.sport} • {m.match_date}</div>
+              <Link key={m.match_id} to={`/sport/${m.sport.toLowerCase().split(" ").join("-")}?match=${m.match_id}`} style={{ textDecoration: "none" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border-color)", transition: "border-color 0.2s", cursor: "pointer" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-hover)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-color)"; }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--border-color)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{S_ICONS[m.sport as keyof typeof S_ICONS]}</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)" }}>{gTeam(m.team1_id)?.team_name} vs {gTeam(m.team2_id)?.team_name}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {m.sport} • {m.match_date}
+                        {(m.score_team1 > 0 || m.score_team2 > 0 || (m.t1_rounds && m.t1_rounds > 0) || (m.t2_rounds && m.t2_rounds > 0)) && (
+                          <span style={{ marginLeft: 8, fontWeight: 800, color: "#38bdf8" }}>
+                            • {(m.sport !== "Basketball") ? `${m.t1_rounds || 0} - ${m.t2_rounds || 0}` : `${m.score_team1} - ${m.score_team2}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {m.category && <span style={Badge("var(--border-color)")}>{m.category}</span>}
+                    <span style={Badge("#f59e0b")}>{m.game_label}</span>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {m.category && <span style={Badge("var(--border-color)")}>{m.category}</span>}
-                  <span style={Badge("#f59e0b")}>{m.game_label}</span>
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
