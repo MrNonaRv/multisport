@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect, useRef } from "react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-import { db as firestoreDb } from "../lib/firebase";
+import { db as firestoreDb, auth } from "../lib/firebase";
 import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
@@ -63,6 +63,53 @@ interface DatabaseContextType {
   addReferee: (referee: Omit<Referee, "referee_id">) => void;
   deleteReferee: (refereeId: number) => void;
   recordLiveGameAction: (params: LiveGameActionParams) => void;
+}
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -155,12 +202,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     setDoc(docRef, dataToSave, { merge: false })
       .catch((err) => {
-        if (err.code === "resource-exhausted") {
-          quotaExceeded = true;
-          console.warn("Firebase Database Quota Exceeded. Writes disabled for this session.");
-        } else {
-          console.error("Firestore sync error:", err);
-        }
+        handleFirestoreError(err, OperationType.WRITE, FIRESTORE_DOC_ID);
       })
       .finally(() => {
         isWritingRef.current = false;
@@ -218,46 +260,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             qf: b.qf || Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
             sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
           }));
-          if (!parsed.activityLogs) parsed.activityLogs = [];
-          if (!parsed.referees) parsed.referees = [];
-          
-          if (latestDbRef.current && latestDbRef.current.lastUpdated && parsed.lastUpdated) {
-            if (latestDbRef.current.lastUpdated > parsed.lastUpdated && isWritingRef.current) {
-              setLoading(false);
-              return;
-            }
-          }
-          
+
           setDb(parsed);
           latestDbRef.current = parsed;
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-          } catch (e) {
-            console.error("Failed to save remote snapshot to storage", e);
-          }
+          setLoading(false);
         } catch (e) {
-          console.error("Failed to parse remote database", e);
+          console.error("Failed to parse Firestore data", e);
+          setLoading(false);
         }
       } else {
-        // Initialize Firestore with default DB if it doesn't exist
-        const initial = initDB();
-        if (!quotaExceeded) {
-          setDoc(docRef, initial).catch(err => {
-            if (err.code === 'resource-exhausted') {
-              quotaExceeded = true;
-              console.warn("Firebase Database Quota Exceeded on init.");
-            } else {
-              console.error("Failed to initialize Firestore", err);
-            }
-          });
-        }
-        setDb(initial);
-        latestDbRef.current = initial;
+        setLoading(false);
       }
-      setLoading(false);
     }, (error) => {
-      console.error("Firestore snapshot error:", error);
-      setLoading(false);
+      handleFirestoreError(error, OperationType.GET, FIRESTORE_DOC_ID);
     });
 
     return () => unsubscribe();
