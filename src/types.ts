@@ -14,6 +14,7 @@ export interface Player {
   sport: string;
   jersey_number: number | string; // allowing string for colors "Red" | "Blue"
   gender?: "Male" | "Female";
+  photo_url?: string;
 }
 
 export interface Match {
@@ -77,7 +78,6 @@ export interface PlayerStat {
   errors?: number;
   service_wins?: number;
   fouls?: number;
-  substitutions?: number;
 }
 
 export interface User {

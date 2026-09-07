@@ -3,6 +3,16 @@ import { useDatabase } from "../context/DatabaseContext";
 import { useAuth } from "../context/AuthContext";
 import { Player, PlayerStat } from "../types";
 
+const MAX_ACTIVE_PLAYERS: Record<string, number> = {
+  "Basketball": 5,
+  "Volleyball": 6,
+  "Table Tennis": 2,
+  "Badminton": 2,
+  "Sepak Takraw": 3,
+  "Arnis": 1,
+  "Taekwondo": 1
+};
+
 const QUICK_ACTIONS: Record<string, { label: string, stat: keyof PlayerStat, pts: number, inc: number }[]> = {
   "Basketball": [
     { label: "+1 Pt", stat: "points", pts: 1, inc: 1 },
@@ -114,9 +124,28 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   };
 
   const handleToggleActive = (p: Player) => {
+    if (match.clock_status === "running") {
+      showToast("Cannot modify roster while clock is running.");
+      return;
+    }
+
     const isAct = activePlayers.has(p.player_id);
     const newSet = new Set(activePlayers);
     const isTeam1 = p.team_id === match.team1_id;
+    
+    if (!isAct) {
+      const maxAllowed = MAX_ACTIVE_PLAYERS[match.sport] || 5;
+      const currentTeamActiveCount = Array.from(newSet).filter(id => {
+        const player = db.players.find(x => x.player_id === id);
+        return player && player.team_id === p.team_id;
+      }).length;
+      
+      if (currentTeamActiveCount >= maxAllowed) {
+        showToast(`Max ${maxAllowed} players allowed for ${match.sport}.`);
+        return;
+      }
+    }
+
     const teamName = isTeam1 ? t1?.team_name : t2?.team_name;
     let logMsg = "";
     let actionLabel = "";
@@ -651,119 +680,177 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
           
           {/* Team 1 Players */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {t1Players.map(p => {
-              const pStats = db.playerStats.find(s => s.player_id === p.player_id && s.match_id === match.match_id);
-              return (
-              <div key={p.player_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", padding: "10px 16px", borderRadius: "100px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                  <div style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0fdf4", color: "#2563eb", fontWeight: "600", borderRadius: "8px", fontSize: "12px", clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}>
-                    {p.jersey_number.toString().padStart(2, '0')}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <input 
-                        type="checkbox" 
-                        checked={activePlayers.has(p.player_id)} 
-                        onChange={() => handleToggleActive(p)} 
-                        title="Active on court"
-                        style={{ cursor: "pointer", width: 14, height: 14, accentColor: "#2563eb" }}
-                      />
-                      <span style={{ color: "#1e293b", fontWeight: activePlayers.has(p.player_id) ? "700" : "500", fontSize: "13px" }}>{p.player_name}</span>
+            {(() => {
+              const activeList = t1Players.filter(p => activePlayers.has(p.player_id));
+              const benchList = t1Players.filter(p => !activePlayers.has(p.player_id));
+              
+              const renderPlayerRow = (p: Player, isActiveGroup: boolean) => {
+                const pStats = db.playerStats.find(s => s.player_id === p.player_id && s.match_id === match.match_id);
+                const isCurrentlyActive = activePlayers.has(p.player_id);
+                return (
+                  <div key={p.player_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", padding: "10px 16px", borderRadius: "100px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", border: isActiveGroup ? "2px solid #3b82f6" : "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      {p.photo_url ? (
+                        <img src={p.photo_url} alt={p.player_name} style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0fdf4", color: "#2563eb", fontWeight: "600", borderRadius: "8px", fontSize: "12px", clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}>
+                          {p.jersey_number.toString().padStart(2, '0')}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <input 
+                            type="checkbox" 
+                            checked={isCurrentlyActive} 
+                            onChange={() => handleToggleActive(p)} 
+                            disabled={match.clock_status === "running"}
+                            title="Active on court"
+                            style={{ cursor: match.clock_status === "running" ? "not-allowed" : "pointer", width: 14, height: 14, accentColor: "#2563eb" }}
+                          />
+                          <span style={{ color: "#1e293b", fontWeight: isCurrentlyActive ? "800" : "500", fontSize: "13px" }}>{p.player_name}</span>
+                        </div>
+                        <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: "500", marginTop: "2px" }}>PTS {pStats?.points || 0} &nbsp; FLS {pStats?.fouls || 0}</span>
+                      </div>
                     </div>
-                    <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: "500", marginTop: "2px" }}>PTS {pStats?.points || 0} &nbsp; FLS {pStats?.fouls || 0}</span>
+                    <div style={{ display: "flex", gap: "4px", opacity: isCurrentlyActive ? 1 : 0.6 }}>
+                      {actions.map(a => {
+                        const isFoul = a.stat === "fouls" || a.stat === "errors" || a.stat === "gam_jeom";
+                        const isReb = a.label === "Reb" || a.label === "Ast" || a.label === "Stl" || a.label === "Blk";
+                        const shortLabel = a.label.replace(" Pts", "").replace(" Pt", "").replace("Point (+1)", "+1");
+                        
+                        return (
+                          <button key={a.label} onClick={() => handleQuickAction(p, a, true)} style={{ 
+                            background: isFoul ? "#fef2f2" : (isReb ? "#f8fafc" : "#2563eb"), 
+                            color: isFoul ? "#ef4444" : (isReb ? "#64748b" : "white"), 
+                            border: isReb ? "1px solid #e2e8f0" : "none", 
+                            padding: isReb ? "5px 6px" : "6px 12px", 
+                            borderRadius: "100px", 
+                            fontSize: isReb ? "10px" : "12px", 
+                            fontWeight: "600", 
+                            cursor: "pointer",
+                            minWidth: isReb ? "auto" : "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all 0.1s"
+                          }}
+                          onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"} 
+                          onMouseUp={e => e.currentTarget.style.transform = "scale(1)"} 
+                          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+                            {isFoul ? "⚠" : shortLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: "4px" }}>
-                  {actions.map(a => {
-                    const isFoul = a.stat === "fouls" || a.stat === "errors" || a.stat === "gam_jeom";
-                    const isReb = a.label === "Reb" || a.label === "Ast" || a.label === "Stl" || a.label === "Blk";
-                    const shortLabel = a.label.replace(" Pts", "").replace(" Pt", "").replace("Point (+1)", "+1");
-                    
-                    return (
-                      <button key={a.label} onClick={() => handleQuickAction(p, a, true)} style={{ 
-                        background: isFoul ? "#fef2f2" : (isReb ? "#f8fafc" : "#2563eb"), 
-                        color: isFoul ? "#ef4444" : (isReb ? "#64748b" : "white"), 
-                        border: isReb ? "1px solid #e2e8f0" : "none", 
-                        padding: isReb ? "5px 6px" : "6px 12px", 
-                        borderRadius: "100px", 
-                        fontSize: isReb ? "10px" : "12px", 
-                        fontWeight: "600", 
-                        cursor: "pointer",
-                        minWidth: isReb ? "auto" : "36px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.1s"
-                      }}
-                      onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"} 
-                      onMouseUp={e => e.currentTarget.style.transform = "scale(1)"} 
-                      onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-                        {isFoul ? "⚠" : shortLabel}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )})}
+                );
+              };
+
+              return (
+                <>
+                  {activeList.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: benchList.length > 0 ? "24px" : "0", paddingBottom: benchList.length > 0 ? "24px" : "0", borderBottom: benchList.length > 0 ? "2px dashed #e2e8f0" : "none" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 700, color: "#3b82f6", letterSpacing: 1, textTransform: "uppercase" }}>Currently Playing</div>
+                      {activeList.map(p => renderPlayerRow(p, true))}
+                    </div>
+                  )}
+                  {benchList.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 700, color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase" }}>Bench</div>
+                      {benchList.map(p => renderPlayerRow(p, false))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {t1Players.length === 0 && <div style={{ color: "#64748b", fontSize: "14px", textAlign: "center", padding: "24px" }}>No players found</div>}
           </div>
 
           {/* Team 2 Players */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {t2Players.map(p => {
-              const pStats = db.playerStats.find(s => s.player_id === p.player_id && s.match_id === match.match_id);
-              return (
-              <div key={p.player_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", padding: "10px 16px", borderRadius: "100px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                  <div style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0fdf4", color: "#2563eb", fontWeight: "600", borderRadius: "8px", fontSize: "12px", clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}>
-                    {p.jersey_number.toString().padStart(2, '0')}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <input 
-                        type="checkbox" 
-                        checked={activePlayers.has(p.player_id)} 
-                        onChange={() => handleToggleActive(p)} 
-                        title="Active on court"
-                        style={{ cursor: "pointer", width: 14, height: 14, accentColor: "#2563eb" }}
-                      />
-                      <span style={{ color: "#1e293b", fontWeight: activePlayers.has(p.player_id) ? "700" : "500", fontSize: "13px" }}>{p.player_name}</span>
+            {(() => {
+              const activeList = t2Players.filter(p => activePlayers.has(p.player_id));
+              const benchList = t2Players.filter(p => !activePlayers.has(p.player_id));
+              
+              const renderPlayerRow = (p: Player, isActiveGroup: boolean) => {
+                const pStats = db.playerStats.find(s => s.player_id === p.player_id && s.match_id === match.match_id);
+                const isCurrentlyActive = activePlayers.has(p.player_id);
+                return (
+                  <div key={p.player_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", padding: "10px 16px", borderRadius: "100px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", border: isActiveGroup ? "2px solid #3b82f6" : "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      {p.photo_url ? (
+                        <img src={p.photo_url} alt={p.player_name} style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0fdf4", color: "#2563eb", fontWeight: "600", borderRadius: "8px", fontSize: "12px", clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}>
+                          {p.jersey_number.toString().padStart(2, '0')}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <input 
+                            type="checkbox" 
+                            checked={isCurrentlyActive} 
+                            onChange={() => handleToggleActive(p)} 
+                            disabled={match.clock_status === "running"}
+                            title="Active on court"
+                            style={{ cursor: match.clock_status === "running" ? "not-allowed" : "pointer", width: 14, height: 14, accentColor: "#2563eb" }}
+                          />
+                          <span style={{ color: "#1e293b", fontWeight: isCurrentlyActive ? "800" : "500", fontSize: "13px" }}>{p.player_name}</span>
+                        </div>
+                        <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: "500", marginTop: "2px" }}>PTS {pStats?.points || 0} &nbsp; FLS {pStats?.fouls || 0}</span>
+                      </div>
                     </div>
-                    <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: "500", marginTop: "2px" }}>PTS {pStats?.points || 0} &nbsp; FLS {pStats?.fouls || 0}</span>
+                    <div style={{ display: "flex", gap: "4px", opacity: isCurrentlyActive ? 1 : 0.6 }}>
+                      {actions.map(a => {
+                        const isFoul = a.stat === "fouls" || a.stat === "errors" || a.stat === "gam_jeom";
+                        const isReb = a.label === "Reb" || a.label === "Ast" || a.label === "Stl" || a.label === "Blk";
+                        const shortLabel = a.label.replace(" Pts", "").replace(" Pt", "").replace("Point (+1)", "+1");
+                        
+                        return (
+                          <button key={a.label} onClick={() => handleQuickAction(p, a, false)} style={{ 
+                            background: isFoul ? "#fef2f2" : (isReb ? "#f8fafc" : "#2563eb"), 
+                            color: isFoul ? "#ef4444" : (isReb ? "#64748b" : "white"), 
+                            border: isReb ? "1px solid #e2e8f0" : "none", 
+                            padding: isReb ? "5px 6px" : "6px 12px", 
+                            borderRadius: "100px", 
+                            fontSize: isReb ? "10px" : "12px", 
+                            fontWeight: "600", 
+                            cursor: "pointer",
+                            minWidth: isReb ? "auto" : "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all 0.1s"
+                          }}
+                          onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"} 
+                          onMouseUp={e => e.currentTarget.style.transform = "scale(1)"} 
+                          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+                            {isFoul ? "⚠" : shortLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: "4px" }}>
-                  {actions.map(a => {
-                    const isFoul = a.stat === "fouls" || a.stat === "errors" || a.stat === "gam_jeom";
-                    const isReb = a.label === "Reb" || a.label === "Ast" || a.label === "Stl" || a.label === "Blk";
-                    const shortLabel = a.label.replace(" Pts", "").replace(" Pt", "").replace("Point (+1)", "+1");
-                    
-                    return (
-                      <button key={a.label} onClick={() => handleQuickAction(p, a, false)} style={{ 
-                        background: isFoul ? "#fef2f2" : (isReb ? "#f8fafc" : "#2563eb"), 
-                        color: isFoul ? "#ef4444" : (isReb ? "#64748b" : "white"), 
-                        border: isReb ? "1px solid #e2e8f0" : "none", 
-                        padding: isReb ? "5px 6px" : "6px 12px", 
-                        borderRadius: "100px", 
-                        fontSize: isReb ? "10px" : "12px", 
-                        fontWeight: "600", 
-                        cursor: "pointer",
-                        minWidth: isReb ? "auto" : "36px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.1s"
-                      }}
-                      onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"} 
-                      onMouseUp={e => e.currentTarget.style.transform = "scale(1)"} 
-                      onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-                        {isFoul ? "⚠" : shortLabel}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )})}
+                );
+              };
+
+              return (
+                <>
+                  {activeList.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: benchList.length > 0 ? "24px" : "0", paddingBottom: benchList.length > 0 ? "24px" : "0", borderBottom: benchList.length > 0 ? "2px dashed #e2e8f0" : "none" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 700, color: "#3b82f6", letterSpacing: 1, textTransform: "uppercase", textAlign: "right" }}>Currently Playing</div>
+                      {activeList.map(p => renderPlayerRow(p, true))}
+                    </div>
+                  )}
+                  {benchList.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 700, color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", textAlign: "right" }}>Bench</div>
+                      {benchList.map(p => renderPlayerRow(p, false))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {t2Players.length === 0 && <div style={{ color: "#64748b", fontSize: "14px", textAlign: "center", padding: "24px" }}>No players found</div>}
           </div>
           

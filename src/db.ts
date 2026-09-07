@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 export const SPORTS = ["Basketball","Volleyball","Table Tennis","Badminton","Sepak Takraw","Arnis","Taekwondo"];
 export const S_ICONS = { Basketball:"🏀", Volleyball:"🏐", "Table Tennis":"🏓", Badminton:"🏸", "Sepak Takraw":"⚽", Arnis:"⚔️", Taekwondo:"🥋" };
 export const S_STATS = {
-  Basketball:["points","rebounds","assists","steals","blocks","fouls","substitutions"],
+  Basketball:["points","rebounds","assists","steals","blocks","fouls"],
   Volleyball:["points","kills","blocks","aces","errors"],
   "Table Tennis":["points","aces","smashes","service_wins"],
   Badminton:["points","smashes","drops","clears"],

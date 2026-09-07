@@ -204,6 +204,7 @@ export default function Dashboard() {
   const [newPlayerTeam, setNewPlayerTeam] = useState("");
   const [newPlayerJersey, setNewPlayerJersey] = useState("");
   const [newPlayerGender, setNewPlayerGender] = useState("Male");
+  const [newPlayerPhoto, setNewPlayerPhoto] = useState("");
 
   const [newPlayerDivision, setNewPlayerDivision] = useState("Men's Division");
   // Add User State
@@ -308,6 +309,15 @@ export default function Dashboard() {
     showMsg("s", "Team added successfully!");
   };
 
+  const handlePlayerPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setNewPlayerPhoto(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddPlayer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlayerName.trim() || !newPlayerTeam || !newPlayerJersey) return showMsg("e", "Please fill in all player fields.");
@@ -315,9 +325,9 @@ export default function Dashboard() {
     const team = db.teams.find(t => t.team_id === teamId);
     if (!team) return;
     const jerseyValue = (team.sport === "Taekwondo" || team.sport === "Arnis") ? newPlayerJersey : parseInt(newPlayerJersey);
-    addPlayer({ player_name: newPlayerName, team_id: teamId, sport: team.sport, jersey_number: jerseyValue, gender: newPlayerGender as any });
+    addPlayer({ player_name: newPlayerName, team_id: teamId, sport: team.sport, jersey_number: jerseyValue, gender: newPlayerGender as any, photo_url: newPlayerPhoto || undefined });
     addActivityLog(`${user?.name} added player ${newPlayerName} to team ${team.team_name}`);
-    setNewPlayerName(""); setNewPlayerJersey("");
+    setNewPlayerName(""); setNewPlayerJersey(""); setNewPlayerPhoto("");
     showMsg("s", "Player added successfully!");
   };
 
@@ -828,6 +838,13 @@ export default function Dashboard() {
               <option value="Male" style={{ color: "#000" }}>Male</option>
               <option value="Female" style={{ color: "#000" }}>Female</option>
             </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Player Photo</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {newPlayerPhoto && <img src={newPlayerPhoto} alt="Player" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} />}
+              <input type="file" accept="image/*" onChange={handlePlayerPhotoUpload} style={{ background: "var(--panel-bg)", color: "var(--text-main)", fontSize: 14 }} />
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Division</label>

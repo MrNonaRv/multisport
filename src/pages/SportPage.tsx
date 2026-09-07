@@ -367,9 +367,9 @@ const MatchCard = React.memo(({
         <div style={{ marginTop: 16, pt: 16, borderTop: "1px solid var(--border-color)", textAlign: "center" }}>
           <button 
             onClick={() => onViewBoxScore(m.match_id)}
-            style={{ background: "var(--panel-bg)", border: `1px solid ${theme.accent}40`, color: theme.accent, padding: "8px 24px", borderRadius: 20, cursor: "pointer", fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}
+            style={{ background: "var(--panel-bg)", border: `1px solid ${theme.accent}40`, color: theme.accent, padding: "8px 24px", borderRadius: 20, cursor: "pointer", fontWeight: 800, fontSize: 12, textTransform: "none", letterSpacing: 1 }}
           >
-            View Match Dashboard
+            View match dashboard
           </button>
         </div>
       )}
@@ -1482,9 +1482,13 @@ const getStat = (playerId: number, statKey: string) => {
                 
                 {mvpPlayer && (
                   <div style={{ background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)", padding: 20, borderRadius: 12, display: "flex", alignItems: "center", gap: 20, color: "#fff", boxShadow: "0 10px 15px -3px rgba(245, 158, 11, 0.3)" }}>
-                    <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#fff", color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900 }}>
-                      {mvpPlayer.player_name.substring(0, 2).toUpperCase()}
-                    </div>
+                    {mvpPlayer.photo_url ? (
+                      <img src={mvpPlayer.photo_url} alt={mvpPlayer.player_name} style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: "2px solid #fff" }} />
+                    ) : (
+                      <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#fff", color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900 }}>
+                        {mvpPlayer.player_name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, opacity: 0.9 }}>Match MVP</div>
                       <div style={{ fontSize: 24, fontWeight: 900 }}>{mvpPlayer.player_name}</div>
@@ -1542,11 +1546,23 @@ const getStat = (playerId: number, statKey: string) => {
                         <tbody>
                           {p.map(player => (
                             <tr key={player.player_id} style={{ borderBottom: "1px solid var(--panel-bg)" }}>
-                              <td style={{ padding: 12, fontWeight: 700, fontSize: 14 }}>
-                                {player.player_name} <span style={{ color: "#475569", fontSize: 12, marginLeft: 4 }}>#{player.jersey_number}</span>
-                                {match.active_player_ids?.includes(player.player_id) && match.status === "live" && (
-                                  <span style={{ marginLeft: 8, background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6 }}>ON COURT</span>
+                              <td style={{ padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                                {player.photo_url ? (
+                                  <img src={player.photo_url} alt={player.player_name} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
+                                ) : (
+                                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900 }}>
+                                    {player.jersey_number}
+                                  </div>
                                 )}
+                                <div style={{ display: "flex", flexDirection: "column" }}>
+                                  <div style={{ fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                                    {player.player_name}
+                                    {match.active_player_ids?.includes(player.player_id) && match.status === "live" && (
+                                      <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4 }}>ON COURT</span>
+                                    )}
+                                  </div>
+                                  <span style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>#{player.jersey_number}</span>
+                                </div>
                               </td>
                               {sportStats.map(st => (
                                 <td key={st} style={{ padding: 12, textAlign: "center", fontWeight: 800, color: "var(--text-main)" }}>
