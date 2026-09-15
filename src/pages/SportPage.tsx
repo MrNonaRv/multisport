@@ -752,14 +752,46 @@ export default function SportPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {db.finalsGames.filter(g => g.sport === sport).map((g, i) => (
-                              <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                                <td style={{ padding: 16, fontSize: 14, color: "var(--text-muted)" }}>{g.game}</td>
-                                <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#10b981" }}>{g.winner}</td>
-                                <td style={{ padding: 16, fontSize: 14 }}>{g.scoreA} - {g.scoreB}</td>
-                                <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#ef4444" }}>{g.loser}</td>
-                              </tr>
-                            ))}
+                            {(() => {
+                              const finalMatches = mtc.filter(m => 
+                                m.status === "completed" && 
+                                ((teamsMap[m.team1_id]?.team_name === bracket.final.team1 && teamsMap[m.team2_id]?.team_name === bracket.final.team2) || 
+                                 (teamsMap[m.team1_id]?.team_name === bracket.final.team2 && teamsMap[m.team2_id]?.team_name === bracket.final.team1))
+                              ).sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
+
+                              if (finalMatches.length === 0) {
+                                return (
+                                  <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)" }}>No final games played yet.</td></tr>
+                                );
+                              }
+
+                              return finalMatches.map((m, i) => {
+                                const t1 = teamsMap[m.team1_id];
+                                const t2 = teamsMap[m.team2_id];
+                                const isT1Winner = m.winner === t1.team_name;
+                                const winnerName = isT1Winner ? t1.team_name : (m.winner === t2.team_name ? t2.team_name : "Draw");
+                                const loserName = isT1Winner ? t2.team_name : (m.winner === t2.team_name ? t1.team_name : "Draw");
+                                
+                                let scoreA = 0;
+                                let scoreB = 0;
+                                if (m.sport !== "Basketball") {
+                                  scoreA = isT1Winner ? (m.t1_rounds || m.score_team1) : (m.t2_rounds || m.score_team2);
+                                  scoreB = isT1Winner ? (m.t2_rounds || m.score_team2) : (m.t1_rounds || m.score_team1);
+                                } else {
+                                  scoreA = isT1Winner ? m.score_team1 : m.score_team2;
+                                  scoreB = isT1Winner ? m.score_team2 : m.score_team1;
+                                }
+
+                                return (
+                                  <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                                    <td style={{ padding: 16, fontSize: 14, color: "var(--text-muted)" }}>Game {i + 1}</td>
+                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#10b981" }}>{winnerName}</td>
+                                    <td style={{ padding: 16, fontSize: 14 }}>{scoreA} - {scoreB}</td>
+                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#ef4444" }}>{loserName}</td>
+                                  </tr>
+                                );
+                              });
+                            })()}
                           </tbody>
                         </table>
                       </div>
@@ -767,91 +799,124 @@ export default function SportPage() {
 
                     <div style={{ background: "var(--border-color)", backdropFilter: "blur(10px)", borderRadius: 16, padding: mob ? 20 : 40, border: "1px solid var(--border-hover)", overflowX: "auto" }}>
                       <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 30, textAlign: "center" }}>TOURNAMENT BRACKET</h3>
-                      <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", gap: 20, flexWrap: mob ? "wrap" : "nowrap", minWidth: mob ? "auto" : 800 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.6, textAlign: "center" }}>QUARTER FINALS</div>
-                          {bracket?.qf?.map((match, i) => (
-                            <div key={i} style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", color: "var(--text-main)", padding: "10px 20px", borderRadius: 8, minWidth: 180, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "1px solid var(--border-color)" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: 4, marginBottom: 4 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#ef4444" }}>RED</span>}
-                                  <span style={{ fontWeight: match.winner === match.team1 ? 900 : 500, color: match.winner === match.team1 ? "#10b981" : "var(--text-muted)" }}>{match.team1}</span>
-                                  {match.winner === match.team1 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
-                                  {match.winner !== match.team1 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
+<div style={{ display: "flex", alignItems: "center", gap: mob ? 20 : 32, flexDirection: mob ? "column" : "row", background: "#eef2f6", padding: "48px 32px", borderRadius: 16, overflowX: "auto" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>QUARTER FINALS</div>
+                          {bracket?.qf?.map((match, i) => {
+                            const hasWinner = !!match.winner;
+                            const team1IsWinner = hasWinner && match.winner === match.team1;
+                            const team2IsWinner = hasWinner && match.winner === match.team2;
+                            return (
+                            <div key={i} style={{ background: "#ffffff", color: "var(--text-main)", padding: 16, borderRadius: 12, minWidth: 250, boxShadow: "0 4px 16px rgba(0,0,0,0.05)", border: "none", position: "relative" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#ef4444" }}>RED</span>}
+                                  <span style={{ fontWeight: 900, fontSize: 16, color: team1IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team1 || "TBD"}</span>
+                                  {hasWinner && team1IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
+                                  {hasWinner && !team1IsWinner && match.team1 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 900 }}>{match.score1}</span>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
                               </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
-                                  <span style={{ fontWeight: match.winner === match.team2 ? 900 : 500, color: match.winner === match.team2 ? "#10b981" : "var(--text-muted)" }}>{match.team2}</span>
-                                  {match.winner === match.team2 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
-                                  {match.winner !== match.team2 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
+                              <div style={{ height: 1, background: "var(--border-color)", opacity: 0.5, margin: "-4px 0 8px 0" }} />
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
+                                  <span style={{ fontWeight: 900, fontSize: 16, color: team2IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team2 || "TBD"}</span>
+                                  {hasWinner && team2IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
+                                  {hasWinner && !team2IsWinner && match.team2 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 900 }}>{match.score2}</span>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                        {!mob && <div style={{ display: "flex", alignItems: "center", padding: "0 10px" }}><ArrowRight size={32} color="var(--border-hover)" /></div>}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 60 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.6, textAlign: "center" }}>SEMI FINALS</div>
-                          {bracket?.sf?.map((match, i) => (
-                            <div key={i} style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", color: "var(--text-main)", padding: "10px 20px", borderRadius: 8, minWidth: 180, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "1px solid var(--border-color)" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: 4, marginBottom: 4 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#ef4444" }}>RED</span>}
-                                  <span style={{ fontWeight: match.winner === match.team1 ? 900 : 500, color: match.winner === match.team1 ? "#10b981" : "var(--text-muted)" }}>{match.team1}</span>
-                                  {match.winner === match.team1 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
-                                  {match.winner !== match.team1 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
+                        
+                        {!mob && <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", color: "#93c5fd", paddingTop: 28 }}><ArrowRight size={32} /></div>}
+                        
+                        <div style={{ display: "flex", flexDirection: "column", gap: 100 }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", marginBottom: -60 }}>SEMI FINALS</div>
+                          {bracket?.sf?.map((match, i) => {
+                            const hasWinner = !!match.winner;
+                            const team1IsWinner = hasWinner && match.winner === match.team1;
+                            const team2IsWinner = hasWinner && match.winner === match.team2;
+                            return (
+                            <div key={i} style={{ background: "#ffffff", color: "var(--text-main)", padding: 16, borderRadius: 12, minWidth: 250, boxShadow: "0 4px 16px rgba(0,0,0,0.05)", border: "none", position: "relative" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#ef4444" }}>RED</span>}
+                                  <span style={{ fontWeight: 900, fontSize: 16, color: team1IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team1 || "TBD"}</span>
+                                  {hasWinner && team1IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
+                                  {hasWinner && !team1IsWinner && match.team1 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 900 }}>{match.score1}</span>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
                               </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 10, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
-                                  <span style={{ fontWeight: match.winner === match.team2 ? 900 : 500, color: match.winner === match.team2 ? "#10b981" : "var(--text-muted)" }}>{match.team2}</span>
-                                  {match.winner === match.team2 && <span style={{ fontSize: 9, background: "#10b981", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>W</span>}
-                                  {match.winner !== match.team2 && match.winner && <span style={{ fontSize: 9, background: "#ef4444", color: "var(--text-main)", padding: "1px 4px", borderRadius: 4, fontWeight: 900 }}>L</span>}
+                              <div style={{ height: 1, background: "var(--border-color)", opacity: 0.5, margin: "-4px 0 8px 0" }} />
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
+                                  <span style={{ fontWeight: 900, fontSize: 16, color: team2IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team2 || "TBD"}</span>
+                                  {hasWinner && team2IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
+                                  {hasWinner && !team2IsWinner && match.team2 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 900 }}>{match.score2}</span>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                        {!mob && <div style={{ display: "flex", alignItems: "center", padding: "0 10px" }}><ArrowRight size={32} color="var(--border-hover)" /></div>}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.6, textAlign: "center" }}>FINALS</div>
-                          <div style={{ background: theme.accent, color: "var(--text-main)", padding: "15px 30px", borderRadius: 12, minWidth: 220, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "2px solid var(--text-main)", textAlign: "center" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 12, fontWeight: 900, color: "#ef4444" }}>RED</span>}
-                                <span style={{ fontWeight: bracket.final.winner === bracket.final.team1 ? 900 : 500, fontSize: 18 }}>{bracket.final.team1}</span>
-                                {bracket.final.winner === bracket.final.team1 && <span style={{ fontSize: 10, background: "#10b981", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>WINNER</span>}
-                                {bracket.final.winner !== bracket.final.team1 && bracket.final.winner && <span style={{ fontSize: 10, background: "#ef4444", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>LOSER</span>}
+                        
+                        {!mob && <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", color: "#93c5fd", paddingTop: 28 }}><ArrowRight size={32} /></div>}
+                        
+                        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>FINALS</div>
+                          
+                          {(() => {
+                            const match = bracket.final;
+                            const hasWinner = !!match.winner;
+                            const team1IsWinner = hasWinner && match.winner === match.team1;
+                            const team2IsWinner = hasWinner && match.winner === match.team2;
+                            return (
+                              <div style={{ background: "#f97316", color: "#1f2937", padding: 20, borderRadius: 12, minWidth: 280, boxShadow: "4px 4px 0px rgba(0,0,0,0.2)", border: "3px solid #1f2937", position: "relative" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+                                    {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#ef4444" }}>RED</span>}
+                                    <span style={{ fontWeight: 900, fontSize: 16, color: "#1f2937", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team1 || "TBD"}</span>
+                                    {hasWinner && team1IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>WINNER</span>}
+                                    {hasWinner && !team1IsWinner && match.team1 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>LOSER</span>}
+                                  </div>
+                                  <div style={{ fontSize: 16, fontWeight: 900, color: "#1f2937", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
+                                </div>
+                                <div style={{ textAlign: "center", fontSize: 11, fontWeight: 900, color: "rgba(31,41,55,0.6)", margin: "-4px 0 8px 0" }}>VS</div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+                                    {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
+                                    <span style={{ fontWeight: 900, fontSize: 16, color: "#1f2937", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team2 || "TBD"}</span>
+                                    {hasWinner && team2IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>WINNER</span>}
+                                    {hasWinner && !team2IsWinner && match.team2 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>LOSER</span>}
+                                  </div>
+                                  <div style={{ fontSize: 16, fontWeight: 900, color: "#1f2937", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
+                                </div>
                               </div>
-                              <span style={{ fontWeight: 900, fontSize: 18 }}>{bracket.final.score1}</span>
-                            </div>
-                            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>VS</div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 12, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
-                                <span style={{ fontWeight: bracket.final.winner === bracket.final.team2 ? 900 : 500, fontSize: 18 }}>{bracket.final.team2}</span>
-                                {bracket.final.winner === bracket.final.team2 && <span style={{ fontSize: 10, background: "#10b981", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>WINNER</span>}
-                                {bracket.final.winner !== bracket.final.team2 && bracket.final.winner && <span style={{ fontSize: 10, background: "#ef4444", color: "var(--text-main)", padding: "2px 6px", borderRadius: 4, fontWeight: 900 }}>LOSER</span>}
+                            );
+      })()}
+                          
+                          {bracket.champion && (
+                            <div style={{ marginTop: 16, background: "rgba(249,115,22,0.1)", padding: 24, borderRadius: 12, border: "2px solid rgba(249,115,22,0.3)", textAlign: "center", width: 280 }}>
+                              <h4 style={{ margin: "0 0 16px", color: "#ea580c", fontSize: 20, fontWeight: 900, textTransform: "uppercase", letterSpacing: 1 }}>🏆 Champion</h4>
+                              <div style={{ width: "100%", background: "#fff", border: "2px solid rgba(249,115,22,0.5)", color: "#ea580c", padding: "12px", borderRadius: 8, fontWeight: 900, textAlign: "center", fontSize: 20, boxShadow: "0 4px 12px rgba(249,115,22,0.1)" }}>
+                                {bracket.champion}
                               </div>
-                              <span style={{ fontWeight: 900, fontSize: 18 }}>{bracket.final.score2}</span>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   </>
                 );
-              })()}
+      })()}
             </div>
           )}
-
           {/* LEADERBOARDS SECTION */}
           {sec === "leaderboards" && (() => {
             const bracket = db.brackets.find(b => b.sport === sport && (!b.category || b.category === division));
@@ -881,18 +946,46 @@ export default function SportPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            ${sortedPlayersForReport.map((p, idx) => {
-                               const pl = playersMap[p.player_id];
-                               const tm = pl ? teamsMap[pl.team_id] : null;
-                               return `
-                                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                                   <td style="padding: 8px; font-weight: 600; color: ${idx === 0 ? '#fbbf24' : '#64748b'};">${idx === 0 ? '🏆 MVP' : idx + 1}</td>
-                                   <td style="padding: 8px; font-weight: 600; color: #0f172a;">${pl?.player_name || 'Unknown'}</td>
-                                   <td style="padding: 8px; color: #64748b;">${tm?.team_name || 'Unknown'}</td>
-                                   ${S_STATS[sport as keyof typeof S_STATS]?.map(st => `<td style="padding: 8px; font-weight: 500;">${(p as any)[st] || 0}</td>`).join('')}
-                                 </tr>
-                               `;
-                            }).join('')}
+                            {(() => {
+                              const finalMatches = mtc.filter(m => 
+                                m.status === "completed" && 
+                                ((teamsMap[m.team1_id]?.team_name === bracket.final.team1 && teamsMap[m.team2_id]?.team_name === bracket.final.team2) || 
+                                 (teamsMap[m.team1_id]?.team_name === bracket.final.team2 && teamsMap[m.team2_id]?.team_name === bracket.final.team1))
+                              ).sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
+
+                              if (finalMatches.length === 0) {
+                                return (
+                                  <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)" }}>No final games played yet.</td></tr>
+                                );
+                              }
+
+                              return finalMatches.map((m, i) => {
+                                const t1 = teamsMap[m.team1_id];
+                                const t2 = teamsMap[m.team2_id];
+                                const isT1Winner = m.winner === t1.team_name;
+                                const winnerName = isT1Winner ? t1.team_name : (m.winner === t2.team_name ? t2.team_name : "Draw");
+                                const loserName = isT1Winner ? t2.team_name : (m.winner === t2.team_name ? t1.team_name : "Draw");
+                                
+                                let scoreA = 0;
+                                let scoreB = 0;
+                                if (m.sport !== "Basketball") {
+                                  scoreA = isT1Winner ? (m.t1_rounds || m.score_team1) : (m.t2_rounds || m.score_team2);
+                                  scoreB = isT1Winner ? (m.t2_rounds || m.score_team2) : (m.t1_rounds || m.score_team1);
+                                } else {
+                                  scoreA = isT1Winner ? m.score_team1 : m.score_team2;
+                                  scoreB = isT1Winner ? m.score_team2 : m.score_team1;
+                                }
+
+                                return (
+                                  <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                                    <td style={{ padding: 16, fontSize: 14, color: "var(--text-muted)" }}>Game {i + 1}</td>
+                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#10b981" }}>{winnerName}</td>
+                                    <td style={{ padding: 16, fontSize: 14 }}>{scoreA} - {scoreB}</td>
+                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#ef4444" }}>{loserName}</td>
+                                  </tr>
+                                );
+                              });
+                            })()}
                           </tbody>
                         </table>
                       `;
@@ -1404,13 +1497,47 @@ const getStat = (playerId: number, statKey: string) => {
                                 </tr>
                               </thead>
                               <tbody>
-                                ${p.map(player => `
-                                  <tr style="border-bottom: 1px solid #e2e8f0;">
-                                    <td style="padding: 6px 8px; font-weight: 700; font-size: 12px;">${player.player_name} <span style="color: #94a3b8; font-size: 11px;">#${player.jersey_number}</span></td>
-                                    ${sportStats.map(st => `<td style="padding: 6px 8px; text-align: center; font-weight: 700; font-size: 12px;">${getStat(player.player_id, st)}</td>`).join('')}
+                            {(() => {
+                              const finalMatches = mtc.filter(m => 
+                                m.status === "completed" && 
+                                ((teamsMap[m.team1_id]?.team_name === bracket.final.team1 && teamsMap[m.team2_id]?.team_name === bracket.final.team2) || 
+                                 (teamsMap[m.team1_id]?.team_name === bracket.final.team2 && teamsMap[m.team2_id]?.team_name === bracket.final.team1))
+                              ).sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
+
+                              if (finalMatches.length === 0) {
+                                return (
+                                  <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)" }}>No final games played yet.</td></tr>
+                                );
+                              }
+
+                              return finalMatches.map((m, i) => {
+                                const t1 = teamsMap[m.team1_id];
+                                const t2 = teamsMap[m.team2_id];
+                                const isT1Winner = m.winner === t1.team_name;
+                                const winnerName = isT1Winner ? t1.team_name : (m.winner === t2.team_name ? t2.team_name : "Draw");
+                                const loserName = isT1Winner ? t2.team_name : (m.winner === t2.team_name ? t1.team_name : "Draw");
+                                
+                                let scoreA = 0;
+                                let scoreB = 0;
+                                if (m.sport !== "Basketball") {
+                                  scoreA = isT1Winner ? (m.t1_rounds || m.score_team1) : (m.t2_rounds || m.score_team2);
+                                  scoreB = isT1Winner ? (m.t2_rounds || m.score_team2) : (m.t1_rounds || m.score_team1);
+                                } else {
+                                  scoreA = isT1Winner ? m.score_team1 : m.score_team2;
+                                  scoreB = isT1Winner ? m.score_team2 : m.score_team1;
+                                }
+
+                                return (
+                                  <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                                    <td style={{ padding: 16, fontSize: 14, color: "var(--text-muted)" }}>Game {i + 1}</td>
+                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#10b981" }}>{winnerName}</td>
+                                    <td style={{ padding: 16, fontSize: 14 }}>{scoreA} - {scoreB}</td>
+                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#ef4444" }}>{loserName}</td>
                                   </tr>
-                                `).join('')}
-                              </tbody>
+                                );
+                              });
+                            })()}
+                          </tbody>
                             </table>
                           `;
                         });
@@ -1577,11 +1704,10 @@ const getStat = (playerId: number, statKey: string) => {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
+        </div>
+      </div>
         );
       })()}
-
     </div>
   );
 }

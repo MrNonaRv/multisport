@@ -4,8 +4,8 @@ import { db as firestoreDb, auth, testConnection } from "../lib/firebase";
 import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
 
-const STORAGE_KEY = "multisports_db_v7";
-const FIRESTORE_DOC_ID = "data/sports_db";
+const STORAGE_KEY = "multisports_db_v8";
+const FIRESTORE_DOC_ID = "data/sports_db_v2";
 
 let quotaExceeded = false;
 let globalSetQuotaExceeded: ((val: boolean) => void) | null = null;
@@ -326,7 +326,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           if (!parsed.matches) parsed.matches = [];
           if (!parsed.playerStats) parsed.playerStats = [];
           if (!parsed.users) parsed.users = [];
-          if (!parsed.finalsGames) parsed.finalsGames = [];
+
           if (!parsed.brackets) parsed.brackets = [];
           parsed.brackets = parsed.brackets.map((b: any) => ({
             ...b,
@@ -566,6 +566,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           
           let scoreToUse1 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t1_rounds || 0) : matchToUpd.score_team1;
           let scoreToUse2 = matchToUpd.sport !== "Basketball" ? (matchToUpd.t2_rounds || 0) : matchToUpd.score_team2;
+          if (matchToUpd.sport !== "Basketball" && scoreToUse1 === 0 && scoreToUse2 === 0) {
+            scoreToUse1 = matchToUpd.score_team1;
+            scoreToUse2 = matchToUpd.score_team2;
+          }
 
           let slotFound = false;
 
@@ -840,6 +844,27 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Auto calculate winner if completed and winner is missing
+        if (updatedM.status === "completed" && (!updatedM.winner || updatedM.winner === null)) {
+          let score1 = updatedM.sport !== "Basketball" ? (updatedM.t1_rounds || 0) : updatedM.score_team1;
+          let score2 = updatedM.sport !== "Basketball" ? (updatedM.t2_rounds || 0) : updatedM.score_team2;
+          
+          if (updatedM.sport !== "Basketball" && score1 === 0 && score2 === 0) {
+            score1 = updatedM.score_team1;
+            score2 = updatedM.score_team2;
+          }
+
+          if (score1 > score2) {
+            const t1 = nextDb.teams.find(t => t.team_id === updatedM.team1_id);
+            updatedM.winner = t1?.team_name || null;
+          } else if (score2 > score1) {
+            const t2 = nextDb.teams.find(t => t.team_id === updatedM.team2_id);
+            updatedM.winner = t2?.team_name || null;
+          } else {
+            updatedM.winner = "Draw";
+          }
+        }
+
         // Calculate MVP if completed
         if (updatedM.status === "completed") {
           const sportStatsKeys = (S_STATS as any)[updatedM.sport] || ["points"];
@@ -869,6 +894,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             
             let scoreToUse1 = updatedM.sport !== "Basketball" ? (updatedM.t1_rounds || 0) : updatedM.score_team1;
             let scoreToUse2 = updatedM.sport !== "Basketball" ? (updatedM.t2_rounds || 0) : updatedM.score_team2;
+            if (updatedM.sport !== "Basketball" && scoreToUse1 === 0 && scoreToUse2 === 0) {
+              scoreToUse1 = updatedM.score_team1;
+              scoreToUse2 = updatedM.score_team2;
+            }
             let slotFound = false;
 
             for (let i = 0; i < 4; i++) {

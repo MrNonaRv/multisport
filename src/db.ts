@@ -162,6 +162,7 @@ export function initDB() {
           player_name: name,
           team_id: tId,
           sport,
+      category: "Men's Division",
           jersey_number,
           gender
         });
@@ -172,31 +173,7 @@ export function initDB() {
 
   let mId = 1;
   const matches: any[] = [];
-  
-  SPORTS.forEach(sport => {
-    const sportTeams = teams.filter(t => t.sport === sport);
-    if (sportTeams.length >= 2) {
-      matches.push({
-        match_id: mId++, sport, team1_id: sportTeams[0].team_id, team2_id: sportTeams[1].team_id,
-        match_date: "10/25/24", score_team1: 85, score_team2: 82, winner: sportTeams[0].team_name, status: "completed", game_label: "Elimination Round 1", category: "Men's Division", venue: "Main Gym", referee: "John Smith"
-      });
-      matches.push({
-        match_id: mId++, sport, team1_id: sportTeams[2%sportTeams.length].team_id, team2_id: sportTeams[3%sportTeams.length].team_id,
-        match_date: "10/26/24", score_team1: 0, score_team2: 0, winner: null, status: "live", game_label: "Quarter Finals", category: "Women's Division", venue: "Gym B", referee: "Emily Chen"
-      });
-      matches.push({
-        match_id: mId++, sport, team1_id: sportTeams[0].team_id, team2_id: sportTeams[3%sportTeams.length].team_id,
-        match_date: "10/28/24", score_team1: 0, score_team2: 0, winner: null, status: "upcoming", game_label: "Round 1", category: "Men's Division", venue: "Main Gym"
-      });
-    }
-  });
-
-  const playerStats = [
-    {stat_id:1,player_id:1,match_id:1,sport:"Basketball",points:24,rebounds:10,assists:5,steals:2},
-    {stat_id:2,player_id:2,match_id:1,sport:"Basketball",points:15,rebounds:4,assists:8},
-    {stat_id:3,player_id:13,match_id:2,sport:"Volleyball",points:10,kills:14,aces:3,blocks:2,errors:1},
-    {stat_id:4,player_id:14,match_id:2,sport:"Volleyball",points:12,kills:10,aces:1,blocks:4,errors:3},
-  ];
+  const playerStats: any[] = [];
   const stands = teams.map((t, i) => {
     const won = matches.filter(m => m.status === "completed" && m.winner === t.team_name).length;
     const lost = matches.filter(m => m.status === "completed" && (m.team1_id === t.team_id || m.team2_id === t.team_id) && m.winner && m.winner !== t.team_name).length;
@@ -218,96 +195,28 @@ export function initDB() {
     {user_id:1,name:"Admin User",email:"admin@sportsmetrics.com",password:"admin123",role:"ADMIN"},
     {user_id:2,name:"Tab Reyes",email:"tab@sportsmetrics.com",password:"tab123",role:"TABULATOR"},
   ];
-  const finalsGames = [
-    {sport:"Basketball",game:"Game 1",winner:"AB-TECT THUNDERS",scoreA:107,scoreB:96,loser:"COMSOA D' MAROON"},
-    {sport:"Basketball",game:"Game 2",winner:"AB-TECT THUNDERS",scoreA:110,scoreB:101,loser:"COMSOA D' MAROON"},
-    {sport:"Basketball",game:"Game 3",winner:"AB-TECT THUNDERS",scoreA:105,scoreB:99,loser:"COMSOA D' MAROON"},
-    {sport:"Basketball",game:"Game 4",winner:"COMSOA D' MAROON",scoreA:108,scoreB:88,loser:"AB-TECT THUNDERS"},
-    {sport:"Basketball",game:"Game 5",winner:"AB-TECT THUNDERS",scoreA:106,scoreB:98,loser:"COMSOA D' MAROON"},
-  ];
-  const initialBrackets = [
-    {
-      sport: "Basketball",
-      qf:[
-        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 102, score2: 98, winner: "Ab-tect thunders" },
-        { team1: "Techtitans", team2: "Scisoa foxes", score1: 88, score2: 85, winner: "Techtitans" },
-        { team1: "Ab-tect thunders", team2: "Techtitans", score1: 95, score2: 90, winner: "Ab-tect thunders" },
-        { team1: "Comsoa D' Maroon", team2: "Scisoa foxes", score1: 78, score2: 82, winner: "Scisoa foxes" }
-      ],
-      sf:[
-        { team1: "Ab-tect thunders", team2: "Techtitans", score1: 110, score2: 105, winner: "Ab-tect thunders" },
-        { team1: "Comsoa D' Maroon", team2: "Scisoa foxes", score1: 92, score2: 88, winner: "Comsoa D' Maroon" }
-      ],
-      final: { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 106, score2: 98, winner: "Ab-tect thunders" },
-      champion: "Ab-tect thunders",
-    },
-    {
-      sport: "Volleyball",
-      qf:[
-        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 3, score2: 1, winner: "Ab-tect thunders" },
-        { team1: "Techtitans", team2: "Scisoa foxes", score1: 2, score2: 3, winner: "Scisoa foxes" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
-      ],
-      sf:[
-        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 3, score2: 2, winner: "Ab-tect thunders" },
-        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 3, score2: 1, winner: "Comsoa D' Maroon" }
-      ],
-      final: { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 3, score2: 2, winner: "Ab-tect thunders" },
-      champion: "Ab-tect thunders",
-    },
-    {
-      sport: "Taekwondo",
-      qf:[
-        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 15, score2: 10, winner: "Ab-tect thunders" },
-        { team1: "Techtitans", team2: "Scisoa foxes", score1: 8, score2: 12, winner: "Scisoa foxes" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
-      ],
-      sf:[
-        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 18, score2: 16, winner: "Ab-tect thunders" },
-        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 12, score2: 15, winner: "Techtitans" }
-      ],
-      final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 22, score2: 20, winner: "Ab-tect thunders" },
-      champion: "Ab-tect thunders",
-    },
-    {
-      sport: "Table Tennis",
-      qf:[
-        { team1: "Ab-tect thunders", team2: "Comsoa D' Maroon", score1: 3, score2: 0, winner: "Ab-tect thunders" },
-        { team1: "Techtitans", team2: "Scisoa foxes", score1: 1, score2: 3, winner: "Scisoa foxes" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
-        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
-      ],
-      sf:[
-        { team1: "Ab-tect thunders", team2: "Scisoa foxes", score1: 3, score2: 2, winner: "Ab-tect thunders" },
-        { team1: "Comsoa D' Maroon", team2: "Techtitans", score1: 0, score2: 3, winner: "Techtitans" }
-      ],
-      final: { team1: "Ab-tect thunders", team2: "Techtitans", score1: 3, score2: 1, winner: "Ab-tect thunders" },
-      champion: "Ab-tect thunders",
-    }
-  ];
-
+  
   const brackets = SPORTS.map(sport => {
-    const existing = initialBrackets.find(b => b.sport === sport);
-    if (existing) return existing;
-    
     const sportTeams = teams.filter(t => t.sport === sport);
     return {
       sport,
+      category: "Men's Division",
       qf: [
         { team1: sportTeams[0]?.team_name || "", team2: sportTeams[1]?.team_name || "", score1: 0, score2: 0, winner: "" },
         { team1: sportTeams[2]?.team_name || "", team2: sportTeams[3]?.team_name || "", score1: 0, score2: 0, winner: "" },
         { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
         { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
       ],
-      sf: Array(2).fill({ team1: "", team2: "", score1: 0, score2: 0, winner: "" }),
+      sf: [
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+        { team1: "", team2: "", score1: 0, score2: 0, winner: "" }
+      ],
       final: { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
       champion: ""
     };
   });
   const sports = SPORTS;
-  return { sports, teams, players, matches, playerStats, users, finalsGames, brackets, activityLogs: [], referees };
+  return { sports, teams, players, matches, playerStats, users, brackets, activityLogs: [], referees };
 }
 
 export function useW() {

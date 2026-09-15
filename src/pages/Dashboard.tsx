@@ -903,30 +903,62 @@ export default function Dashboard() {
     const teamsForSport = db.teams.filter(t => t.sport === bracketSport && (!t.category || t.category === bracketDivision));
 
     const renderMatchInputs = (match: BracketMatch, round: "qf" | "sf" | "final", index: number) => {
-      // Only allow team selection for the first round of their structure, which could be qf, sf, or final depending on how many teams they have. To be safe, let's keep team selection open everywhere, but emphasize it's for initial setup.
+      const isFinal = round === "final";
+      const hasWinner = !!match.winner;
+      const team1IsWinner = hasWinner && match.winner === match.team1;
+      const team2IsWinner = hasWinner && match.winner === match.team2;
+
       return (
-      <div style={{ background: "var(--panel-bg)", padding: 16, borderRadius: 12, display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--border-color)" }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <select value={match.team1} onChange={e => updateBracketMatch(round, index, "team1", e.target.value)} style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", padding: 8, borderRadius: 8, fontSize: 16, fontWeight: 700 }}>
-            <option value="" style={{ color: "var(--text-muted)" }}>Select Team 1</option>
-            {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
-          </select>
-          <div style={{ width: 60, background: "var(--bg)", border: "2px solid var(--border-color)", color: "var(--text-muted)", padding: 8, borderRadius: 8, textAlign: "center", fontSize: 18, fontWeight: 900 }}>{match.score1 || 0}</div>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <select value={match.team2} onChange={e => updateBracketMatch(round, index, "team2", e.target.value)} style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", padding: 8, borderRadius: 8, fontSize: 16, fontWeight: 700 }}>
-            <option value="" style={{ color: "var(--text-muted)" }}>Select Team 2</option>
-            {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
-          </select>
-          <div style={{ width: 60, background: "var(--bg)", border: "2px solid var(--border-color)", color: "var(--text-muted)", padding: 8, borderRadius: 8, textAlign: "center", fontSize: 18, fontWeight: 900 }}>{match.score2 || 0}</div>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 4 }}>
-          <span style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 800 }}>Winner:</span>
-          <div style={{ flex: 1, background: match.winner ? "#10b981" : "var(--bg)", color: match.winner ? "var(--bg)" : "var(--text-muted)", padding: 8, borderRadius: 8, fontWeight: 900, fontSize: 16 }}>
-            {match.winner || "TBD"}
+        <div style={{
+          background: isFinal ? "#f97316" : "#ffffff",
+          padding: isFinal ? 20 : 16,
+          borderRadius: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          border: isFinal ? "3px solid #1f2937" : "none",
+          boxShadow: isFinal ? "4px 4px 0px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
+          color: isFinal ? "#1f2937" : "var(--text-main)",
+          position: "relative",
+          width: isFinal ? 280 : 250,
+        }}>
+          {/* Team 1 */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+              <select value={match.team1} onChange={e => updateBracketMatch(round, index, "team1", e.target.value)} style={{ flex: 1, background: "transparent", border: "none", color: isFinal ? "#1f2937" : (team1IsWinner ? "#10b981" : "var(--text-main)"), fontSize: 16, fontWeight: 900, cursor: "pointer", outline: "none", appearance: "none", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden" }}>
+                <option value="" style={{ color: "var(--text-muted)" }}>Select Team 1</option>
+                {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
+              </select>
+              {hasWinner && team1IsWinner && (
+                <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "WINNER" : "W"}</span>
+              )}
+              {hasWinner && !team1IsWinner && match.team1 && (
+                <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "LOSER" : "L"}</span>
+              )}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, flexShrink: 0, color: isFinal ? "#1f2937" : "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
+          </div>
+
+          {isFinal && <div style={{ textAlign: "center", fontSize: 11, fontWeight: 900, color: "rgba(31,41,55,0.6)", margin: "-4px 0" }}>VS</div>}
+          {!isFinal && <div style={{ height: 1, background: "var(--border-color)", opacity: 0.5, margin: "-2px 0" }} />}
+
+          {/* Team 2 */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
+              <select value={match.team2} onChange={e => updateBracketMatch(round, index, "team2", e.target.value)} style={{ flex: 1, background: "transparent", border: "none", color: isFinal ? "#1f2937" : (team2IsWinner ? "#10b981" : "var(--text-main)"), fontSize: 16, fontWeight: 900, cursor: "pointer", outline: "none", appearance: "none", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden" }}>
+                <option value="" style={{ color: "var(--text-muted)" }}>Select Team 2</option>
+                {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
+              </select>
+              {hasWinner && team2IsWinner && (
+                <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "WINNER" : "W"}</span>
+              )}
+              {hasWinner && !team2IsWinner && match.team2 && (
+                <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "LOSER" : "L"}</span>
+              )}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, flexShrink: 0, color: isFinal ? "#1f2937" : "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
           </div>
         </div>
-      </div>
       );
     };
 
@@ -1001,33 +1033,54 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div style={{ overflowX: "auto", paddingBottom: 16 }}>
-          <div style={{ minWidth: 800, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24 }}>
-            {/* Quarter Finals */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <h3 style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 14, textTransform: "uppercase", letterSpacing: 1 }}>Quarter Finals</h3>
-              {editingBracket?.qf?.map((match, i) => <React.Fragment key={i}>{renderMatchInputs(match, "qf", i)}</React.Fragment>)}
-            </div>
-
-            {/* Semi Finals */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, justifyContent: "space-around" }}>
-              <h3 style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 14, textTransform: "uppercase", letterSpacing: 1 }}>Semi Finals</h3>
-              {editingBracket?.sf?.map((match, i) => <React.Fragment key={i}>{renderMatchInputs(match, "sf", i)}</React.Fragment>)}
-            </div>
-
-            {/* Final */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
-              <h3 style={{ textAlign: "center", color: "#f59e0b", fontSize: 14, textTransform: "uppercase", letterSpacing: 1 }}>Final</h3>
-              {renderMatchInputs(editingBracket.final, "final", 0)}
+        <div style={{ overflowX: "auto", paddingBottom: 64, paddingTop: 32 }}>
+          <div style={{ minWidth: 1000, display: "flex", flexDirection: "column", alignItems: "center", background: "#eef2f6", padding: "48px 32px", borderRadius: 16 }}>
+            <h2 style={{ margin: "0 0 48px 0", fontSize: 28, fontWeight: 900, color: "#1f2937", textTransform: "uppercase", letterSpacing: 1.5 }}>Tournament Bracket</h2>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
               
-              <div style={{ marginTop: 24, background: "rgba(245,158,11,0.1)", padding: 16, borderRadius: 8, border: "1px solid rgba(245,158,11,0.3)", textAlign: "center" }}>
-                <h4 style={{ margin: "0 0 8px", color: "#f59e0b" }}>Champion</h4>
-                <select value={editingBracket.champion || ""} onChange={e => setEditingBracket({...editingBracket, champion: e.target.value})} style={{ width: "100%", background: "var(--bg)", border: "1px solid #f59e0b", color: "var(--text-main)", padding: 8, borderRadius: 4, fontWeight: 800, textAlign: "center" }}>
-                  <option value="">Select Champion</option>
-                  {editingBracket.final.team1 && <option value={editingBracket.final.team1}>{editingBracket.final.team1}</option>}
-                  {editingBracket.final.team2 && <option value={editingBracket.final.team2}>{editingBracket.final.team2}</option>}
-                </select>
+              {/* QUARTER FINALS */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                <div style={{ textAlign: "center", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 800, marginBottom: 8 }}>Quarter Finals</div>
+                {renderMatchInputs(editingBracket.qf[0], "qf", 0)}
+                {renderMatchInputs(editingBracket.qf[1], "qf", 1)}
+                {renderMatchInputs(editingBracket.qf[2], "qf", 2)}
+                {renderMatchInputs(editingBracket.qf[3], "qf", 3)}
               </div>
+
+              {/* ARROW COL 1 */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 120, color: "#93c5fd", paddingTop: 28 }}>
+                <ArrowRight size={32} />
+                <ArrowRight size={32} />
+              </div>
+
+              {/* SEMI FINALS */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 100 }}>
+                <div style={{ textAlign: "center", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 800, marginBottom: -60 }}>Semi Finals</div>
+                {renderMatchInputs(editingBracket.sf[0], "sf", 0)}
+                {renderMatchInputs(editingBracket.sf[1], "sf", 1)}
+              </div>
+
+              {/* ARROW COL 2 */}
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", color: "#93c5fd", paddingTop: 28 }}>
+                <ArrowRight size={32} />
+              </div>
+
+              {/* FINALS */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                 <div style={{ textAlign: "center", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 800, marginBottom: 8 }}>Finals</div>
+                 {renderMatchInputs(editingBracket.final, "final", 0)}
+                 
+                 <div style={{ marginTop: 16, background: "rgba(249,115,22,0.1)", padding: 24, borderRadius: 12, border: "2px solid rgba(249,115,22,0.3)", textAlign: "center", width: 280 }}>
+                   <h4 style={{ margin: "0 0 16px", color: "#ea580c", fontSize: 20, fontWeight: 900, textTransform: "uppercase", letterSpacing: 1 }}>🏆 Champion</h4>
+                   <select value={editingBracket.champion || ""} onChange={e => setEditingBracket({...editingBracket, champion: e.target.value})} style={{ width: "100%", background: "#fff", border: "2px solid rgba(249,115,22,0.5)", color: "#ea580c", padding: "12px", borderRadius: 8, fontWeight: 900, textAlign: "center", fontSize: 20, cursor: "pointer", outline: "none", appearance: "none", boxShadow: "0 4px 12px rgba(249,115,22,0.1)" }}>
+                     <option value="">Select Champion</option>
+                     {editingBracket.final.team1 && <option value={editingBracket.final.team1}>{editingBracket.final.team1}</option>}
+                     {editingBracket.final.team2 && <option value={editingBracket.final.team2}>{editingBracket.final.team2}</option>}
+                   </select>
+                 </div>
+              </div>
+
             </div>
           </div>
         </div>

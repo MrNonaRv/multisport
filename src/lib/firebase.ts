@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
+import { getFirestore, initializeFirestore, doc, getDocFromServer } from "firebase/firestore";
 import defaultConfig from "../../firebase-applet-config.json";
 
 let customConfigStr: string | null = null;
@@ -33,7 +33,7 @@ export const firebaseConfig = activeConfig;
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = (databaseId === "(default)" || !databaseId)
-  ? getFirestore(app)
+  ? initializeFirestore(app, { experimentalForceLongPolling: true })
   : getFirestore(app, databaseId);
 
 // Connection test helper

@@ -88,15 +88,6 @@ export interface User {
   role: "ADMIN" | "TABULATOR";
 }
 
-export interface FinalsGame {
-  sport: string;
-  game: string;
-  winner: string;
-  scoreA: number;
-  scoreB: number;
-  loser: string;
-}
-
 export interface BracketMatch {
   team1: string;
   team2: string;
@@ -134,7 +125,6 @@ export interface Database {
   matches: Match[];
   playerStats: PlayerStat[];
   users: User[];
-  finalsGames: FinalsGame[];
   brackets: Bracket[];
   activityLogs: ActivityLog[];
   referees: Referee[];
