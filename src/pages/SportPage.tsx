@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from "react-router-dom";
 import { Trophy, ArrowRight, Activity, Trash2 } from "lucide-react";
 import { useW, SPORT_THEMES, S_STATS } from "../db";
 import { useDatabase } from "../context/DatabaseContext";
+import { TournamentBracket } from "../components/TournamentBracket";
 import { useAuth } from "../context/AuthContext";
 import { Match, Team, User } from "../types";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
@@ -799,118 +800,11 @@ export default function SportPage() {
 
                     <div style={{ background: "var(--border-color)", backdropFilter: "blur(10px)", borderRadius: 16, padding: mob ? 20 : 40, border: "1px solid var(--border-hover)", overflowX: "auto" }}>
                       <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 30, textAlign: "center" }}>TOURNAMENT BRACKET</h3>
-<div style={{ display: "flex", alignItems: "center", gap: mob ? 20 : 32, flexDirection: mob ? "column" : "row", background: "#eef2f6", padding: "48px 32px", borderRadius: 16, overflowX: "auto" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>QUARTER FINALS</div>
-                          {bracket?.qf?.map((match, i) => {
-                            const hasWinner = !!match.winner;
-                            const team1IsWinner = hasWinner && match.winner === match.team1;
-                            const team2IsWinner = hasWinner && match.winner === match.team2;
-                            return (
-                            <div key={i} style={{ background: "#ffffff", color: "var(--text-main)", padding: 16, borderRadius: 12, minWidth: 250, boxShadow: "0 4px 16px rgba(0,0,0,0.05)", border: "none", position: "relative" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#ef4444" }}>RED</span>}
-                                  <span style={{ fontWeight: 900, fontSize: 16, color: team1IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team1 || "TBD"}</span>
-                                  {hasWinner && team1IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
-                                  {hasWinner && !team1IsWinner && match.team1 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
-                                </div>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
-                              </div>
-                              <div style={{ height: 1, background: "var(--border-color)", opacity: 0.5, margin: "-4px 0 8px 0" }} />
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
-                                  <span style={{ fontWeight: 900, fontSize: 16, color: team2IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team2 || "TBD"}</span>
-                                  {hasWinner && team2IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
-                                  {hasWinner && !team2IsWinner && match.team2 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
-                                </div>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
-                              </div>
-                            </div>
-                            );
-                          })}
-                        </div>
-                        
-                        {!mob && <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", color: "#93c5fd", paddingTop: 28 }}><ArrowRight size={32} /></div>}
-                        
-                        <div style={{ display: "flex", flexDirection: "column", gap: 100 }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", marginBottom: -60 }}>SEMI FINALS</div>
-                          {bracket?.sf?.map((match, i) => {
-                            const hasWinner = !!match.winner;
-                            const team1IsWinner = hasWinner && match.winner === match.team1;
-                            const team2IsWinner = hasWinner && match.winner === match.team2;
-                            return (
-                            <div key={i} style={{ background: "#ffffff", color: "var(--text-main)", padding: 16, borderRadius: 12, minWidth: 250, boxShadow: "0 4px 16px rgba(0,0,0,0.05)", border: "none", position: "relative" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#ef4444" }}>RED</span>}
-                                  <span style={{ fontWeight: 900, fontSize: 16, color: team1IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team1 || "TBD"}</span>
-                                  {hasWinner && team1IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
-                                  {hasWinner && !team1IsWinner && match.team1 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
-                                </div>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
-                              </div>
-                              <div style={{ height: 1, background: "var(--border-color)", opacity: 0.5, margin: "-4px 0 8px 0" }} />
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-                                  {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
-                                  <span style={{ fontWeight: 900, fontSize: 16, color: team2IsWinner ? "#10b981" : "var(--text-main)", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team2 || "TBD"}</span>
-                                  {hasWinner && team2IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>W</span>}
-                                  {hasWinner && !team2IsWinner && match.team2 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>L</span>}
-                                </div>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
-                              </div>
-                            </div>
-                            );
-                          })}
-                        </div>
-                        
-                        {!mob && <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", color: "#93c5fd", paddingTop: 28 }}><ArrowRight size={32} /></div>}
-                        
-                        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>FINALS</div>
-                          
-                          {(() => {
-                            const match = bracket.final;
-                            const hasWinner = !!match.winner;
-                            const team1IsWinner = hasWinner && match.winner === match.team1;
-                            const team2IsWinner = hasWinner && match.winner === match.team2;
-                            return (
-                              <div style={{ background: "#f97316", color: "#1f2937", padding: 20, borderRadius: 12, minWidth: 280, boxShadow: "4px 4px 0px rgba(0,0,0,0.2)", border: "3px solid #1f2937", position: "relative" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-                                    {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#ef4444" }}>RED</span>}
-                                    <span style={{ fontWeight: 900, fontSize: 16, color: "#1f2937", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team1 || "TBD"}</span>
-                                    {hasWinner && team1IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>WINNER</span>}
-                                    {hasWinner && !team1IsWinner && match.team1 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>LOSER</span>}
-                                  </div>
-                                  <div style={{ fontSize: 16, fontWeight: 900, color: "#1f2937", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
-                                </div>
-                                <div style={{ textAlign: "center", fontSize: 11, fontWeight: 900, color: "rgba(31,41,55,0.6)", margin: "-4px 0 8px 0" }}>VS</div>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-                                    {(sport === "Arnis" || sport === "Taekwondo") && <span style={{ fontSize: 9, fontWeight: 900, color: "#3b82f6" }}>BLUE</span>}
-                                    <span style={{ fontWeight: 900, fontSize: 16, color: "#1f2937", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>{match.team2 || "TBD"}</span>
-                                    {hasWinner && team2IsWinner && <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>WINNER</span>}
-                                    {hasWinner && !team2IsWinner && match.team2 && <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>LOSER</span>}
-                                  </div>
-                                  <div style={{ fontSize: 16, fontWeight: 900, color: "#1f2937", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
-                                </div>
-                              </div>
-                            );
-      })()}
-                          
-                          {bracket.champion && (
-                            <div style={{ marginTop: 16, background: "rgba(249,115,22,0.1)", padding: 24, borderRadius: 12, border: "2px solid rgba(249,115,22,0.3)", textAlign: "center", width: 280 }}>
-                              <h4 style={{ margin: "0 0 16px", color: "#ea580c", fontSize: 20, fontWeight: 900, textTransform: "uppercase", letterSpacing: 1 }}>🏆 Champion</h4>
-                              <div style={{ width: "100%", background: "#fff", border: "2px solid rgba(249,115,22,0.5)", color: "#ea580c", padding: "12px", borderRadius: 8, fontWeight: 900, textAlign: "center", fontSize: 20, boxShadow: "0 4px 12px rgba(249,115,22,0.1)" }}>
-                                {bracket.champion}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <TournamentBracket 
+                        bracket={bracket}
+                        sport={sport}
+                        mob={mob}
+                      />
                     </div>
                   </>
                 );

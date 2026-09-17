@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { TournamentBracket } from "../components/TournamentBracket";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { Navigate, Link } from "react-router-dom";
@@ -1036,53 +1037,24 @@ export default function Dashboard() {
         <div style={{ overflowX: "auto", paddingBottom: 64, paddingTop: 32 }}>
           <div style={{ minWidth: 1000, display: "flex", flexDirection: "column", alignItems: "center", background: "#eef2f6", padding: "48px 32px", borderRadius: 16 }}>
             <h2 style={{ margin: "0 0 48px 0", fontSize: 28, fontWeight: 900, color: "#1f2937", textTransform: "uppercase", letterSpacing: 1.5 }}>Tournament Bracket</h2>
-            
-            <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-              
-              {/* QUARTER FINALS */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{ textAlign: "center", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 800, marginBottom: 8 }}>Quarter Finals</div>
-                {renderMatchInputs(editingBracket.qf[0], "qf", 0)}
-                {renderMatchInputs(editingBracket.qf[1], "qf", 1)}
-                {renderMatchInputs(editingBracket.qf[2], "qf", 2)}
-                {renderMatchInputs(editingBracket.qf[3], "qf", 3)}
-              </div>
-
-              {/* ARROW COL 1 */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 120, color: "#93c5fd", paddingTop: 28 }}>
-                <ArrowRight size={32} />
-                <ArrowRight size={32} />
-              </div>
-
-              {/* SEMI FINALS */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 100 }}>
-                <div style={{ textAlign: "center", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 800, marginBottom: -60 }}>Semi Finals</div>
-                {renderMatchInputs(editingBracket.sf[0], "sf", 0)}
-                {renderMatchInputs(editingBracket.sf[1], "sf", 1)}
-              </div>
-
-              {/* ARROW COL 2 */}
-              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", color: "#93c5fd", paddingTop: 28 }}>
-                <ArrowRight size={32} />
-              </div>
-
-              {/* FINALS */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                 <div style={{ textAlign: "center", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 800, marginBottom: 8 }}>Finals</div>
-                 {renderMatchInputs(editingBracket.final, "final", 0)}
-                 
-                 <div style={{ marginTop: 16, background: "rgba(249,115,22,0.1)", padding: 24, borderRadius: 12, border: "2px solid rgba(249,115,22,0.3)", textAlign: "center", width: 280 }}>
-                   <h4 style={{ margin: "0 0 16px", color: "#ea580c", fontSize: 20, fontWeight: 900, textTransform: "uppercase", letterSpacing: 1 }}>🏆 Champion</h4>
-                   <select value={editingBracket.champion || ""} onChange={e => setEditingBracket({...editingBracket, champion: e.target.value})} style={{ width: "100%", background: "#fff", border: "2px solid rgba(249,115,22,0.5)", color: "#ea580c", padding: "12px", borderRadius: 8, fontWeight: 900, textAlign: "center", fontSize: 20, cursor: "pointer", outline: "none", appearance: "none", boxShadow: "0 4px 12px rgba(249,115,22,0.1)" }}>
-                     <option value="">Select Champion</option>
-                     {editingBracket.final.team1 && <option value={editingBracket.final.team1}>{editingBracket.final.team1}</option>}
-                     {editingBracket.final.team2 && <option value={editingBracket.final.team2}>{editingBracket.final.team2}</option>}
-                   </select>
-                 </div>
-              </div>
-
-            </div>
+            <TournamentBracket 
+              bracket={editingBracket}
+              sport={editingBracket.sport}
+              isEditing={true}
+              onMatchUpdate={(round, index, field, value) => {
+                let updated = { ...editingBracket };
+                if (round === "final") {
+                  updated.final = { ...updated.final, [field]: value };
+                } else {
+                  updated[round] = [...updated[round]];
+                  updated[round][index] = { ...updated[round][index], [field]: value };
+                }
+                setEditingBracket(updated);
+              }}
+              onChampionUpdate={(val) => setEditingBracket({...editingBracket, champion: val})}
+            />
           </div>
+
         </div>
       </div>
     );
