@@ -3,7 +3,7 @@ import { TournamentBracket } from "../components/TournamentBracket";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { Navigate, Link } from "react-router-dom";
-import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server } from "lucide-react";
+import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server, RotateCcw, Zap } from "lucide-react";
 import { card, PP, Badge } from "../components/Shared";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
 import { Match, Player, Team, User, Bracket, BracketMatch, Database } from "../types";
@@ -443,9 +443,132 @@ export default function Dashboard() {
     if (round === "final") {
       newBracket.final = { ...newBracket.final, [field]: value };
     } else {
+      newBracket[round] = [...newBracket[round]];
       newBracket[round][index] = { ...newBracket[round][index], [field]: value };
     }
     setEditingBracket(newBracket);
+  };
+
+  const handleSetWinner = (round: "qf" | "sf" | "final", index: number, winner: string) => {
+    if (!editingBracket) return;
+    const newBracket: Bracket = JSON.parse(JSON.stringify(editingBracket));
+
+    if (round === "qf") {
+      const oldWinner = newBracket.qf[index].winner;
+      newBracket.qf[index].winner = winner;
+      const nextSf = Math.floor(index / 2);
+      const slot = (index % 2 === 0) ? "team1" : "team2";
+      if (winner) {
+        newBracket.sf[nextSf][slot] = winner;
+        showMsg("s", `Advanced ${winner} to Semi-Final ${nextSf + 1}!`);
+      } else {
+        if (oldWinner && newBracket.sf[nextSf][slot] === oldWinner) {
+          newBracket.sf[nextSf][slot] = "";
+        }
+      }
+    } else if (round === "sf") {
+      const oldWinner = newBracket.sf[index].winner;
+      newBracket.sf[index].winner = winner;
+      const slot = (index === 0) ? "team1" : "team2";
+      if (winner) {
+        newBracket.final[slot] = winner;
+        showMsg("s", `Advanced ${winner} to the Championship Final!`);
+      } else {
+        if (oldWinner && newBracket.final[slot] === oldWinner) {
+          newBracket.final[slot] = "";
+        }
+      }
+    } else if (round === "final") {
+      newBracket.final.winner = winner;
+      newBracket.champion = winner;
+      if (winner) {
+        showMsg("s", `👑 ${winner} is declared the ${bracketSport} Champion!`);
+      }
+    }
+
+    setEditingBracket(newBracket);
+  };
+
+  const handleScheduleBracketMatch = (round: "qf" | "sf" | "final", index: number, team1: string, team2: string) => {
+    const t1 = db.teams.find(t => t.team_name.trim().toLowerCase() === team1.trim().toLowerCase() && t.sport === bracketSport);
+    const t2 = db.teams.find(t => t.team_name.trim().toLowerCase() === team2.trim().toLowerCase() && t.sport === bracketSport);
+    if (!t1 || !t2) {
+      return showMsg("e", "Both teams must be registered teams to schedule a match.");
+    }
+    const roundLabel = round === "final" ? "Championship Final" : (round === "sf" ? `Semi-Final ${index + 1}` : `Quarter-Final ${index + 1}`);
+    setNewMatch({
+      team1_id: String(t1.team_id),
+      team2_id: String(t2.team_id),
+      match_date: new Date().toISOString().split("T")[0],
+      game_label: `${bracketSport} - ${roundLabel}`,
+      venue: "Main Gymnasium",
+      referee: "",
+      category: bracketDivision,
+      scheduled_start_time: "14:00"
+    });
+    setActiveTab("matches");
+    setShowAddMatchForm(true);
+    showMsg("s", `Pre-filled match for ${team1} vs ${team2}! Configure and click Create Match.`);
+  };
+
+  const handleAdvanceByScores = () => {
+    if (!editingBracket) return;
+    let b: Bracket = JSON.parse(JSON.stringify(editingBracket));
+    let advancedCount = 0;
+
+    // Check QF
+    for (let i = 0; i < 4; i++) {
+      const m = b.qf[i];
+      if (m.team1 && m.team2 && typeof m.score1 === "number" && typeof m.score2 === "number" && m.score1 !== m.score2) {
+        const win = m.score1 > m.score2 ? m.team1 : m.team2;
+        m.winner = win;
+        const nextSf = Math.floor(i / 2);
+        const slot = (i % 2 === 0) ? "team1" : "team2";
+        b.sf[nextSf][slot] = win;
+        advancedCount++;
+      }
+    }
+
+    // Check SF
+    for (let i = 0; i < 2; i++) {
+      const m = b.sf[i];
+      if (m.team1 && m.team2 && typeof m.score1 === "number" && typeof m.score2 === "number" && m.score1 !== m.score2) {
+        const win = m.score1 > m.score2 ? m.team1 : m.team2;
+        m.winner = win;
+        const slot = (i === 0) ? "team1" : "team2";
+        b.final[slot] = win;
+        advancedCount++;
+      }
+    }
+
+    // Check Final
+    if (b.final.team1 && b.final.team2 && typeof b.final.score1 === "number" && typeof b.final.score2 === "number" && b.final.score1 !== b.final.score2) {
+      const win = b.final.score1 > b.final.score2 ? b.final.team1 : b.final.team2;
+      b.final.winner = win;
+      b.champion = win;
+      advancedCount++;
+    }
+
+    setEditingBracket(b);
+    if (advancedCount > 0) {
+      showMsg("s", `Auto-advanced ${advancedCount} matches based on entered scores! Don't forget to SAVE.`);
+    } else {
+      showMsg("e", "No matches with differing scores found to auto-advance.");
+    }
+  };
+
+  const handleResetBracketProgress = () => {
+    if (!editingBracket) return;
+    if (!window.confirm("Reset all bracket scores, winners, and progression for this sport? Initial quarterfinal teams will be preserved.")) return;
+    const resetB: Bracket = {
+      ...editingBracket,
+      qf: editingBracket.qf.map(m => ({ ...m, score1: 0, score2: 0, winner: "" })),
+      sf: Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
+      final: { team1: "", team2: "", score1: 0, score2: 0, winner: "" },
+      champion: ""
+    };
+    setEditingBracket(resetB);
+    showMsg("s", "Bracket progression and scores reset! Click SAVE BRACKET to persist.");
   };
 
   // --- Render Helpers ---
@@ -903,66 +1026,6 @@ export default function Dashboard() {
     if (!editingBracket) return null;
     const teamsForSport = db.teams.filter(t => t.sport === bracketSport && (!t.category || t.category === bracketDivision));
 
-    const renderMatchInputs = (match: BracketMatch, round: "qf" | "sf" | "final", index: number) => {
-      const isFinal = round === "final";
-      const hasWinner = !!match.winner;
-      const team1IsWinner = hasWinner && match.winner === match.team1;
-      const team2IsWinner = hasWinner && match.winner === match.team2;
-
-      return (
-        <div style={{
-          background: isFinal ? "#f97316" : "#ffffff",
-          padding: isFinal ? 20 : 16,
-          borderRadius: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          border: isFinal ? "3px solid #1f2937" : "none",
-          boxShadow: isFinal ? "4px 4px 0px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
-          color: isFinal ? "#1f2937" : "var(--text-main)",
-          position: "relative",
-          width: isFinal ? 280 : 250,
-        }}>
-          {/* Team 1 */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-              <select value={match.team1} onChange={e => updateBracketMatch(round, index, "team1", e.target.value)} style={{ flex: 1, background: "transparent", border: "none", color: isFinal ? "#1f2937" : (team1IsWinner ? "#10b981" : "var(--text-main)"), fontSize: 16, fontWeight: 900, cursor: "pointer", outline: "none", appearance: "none", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden" }}>
-                <option value="" style={{ color: "var(--text-muted)" }}>Select Team 1</option>
-                {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
-              </select>
-              {hasWinner && team1IsWinner && (
-                <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "WINNER" : "W"}</span>
-              )}
-              {hasWinner && !team1IsWinner && match.team1 && (
-                <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "LOSER" : "L"}</span>
-              )}
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 900, flexShrink: 0, color: isFinal ? "#1f2937" : "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score1 || 0}</div>
-          </div>
-
-          {isFinal && <div style={{ textAlign: "center", fontSize: 11, fontWeight: 900, color: "rgba(31,41,55,0.6)", margin: "-4px 0" }}>VS</div>}
-          {!isFinal && <div style={{ height: 1, background: "var(--border-color)", opacity: 0.5, margin: "-2px 0" }} />}
-
-          {/* Team 2 */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, overflow: "hidden" }}>
-              <select value={match.team2} onChange={e => updateBracketMatch(round, index, "team2", e.target.value)} style={{ flex: 1, background: "transparent", border: "none", color: isFinal ? "#1f2937" : (team2IsWinner ? "#10b981" : "var(--text-main)"), fontSize: 16, fontWeight: 900, cursor: "pointer", outline: "none", appearance: "none", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden" }}>
-                <option value="" style={{ color: "var(--text-muted)" }}>Select Team 2</option>
-                {teamsForSport.map(t => <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>)}
-              </select>
-              {hasWinner && team2IsWinner && (
-                <span style={{ background: "#10b981", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "WINNER" : "W"}</span>
-              )}
-              {hasWinner && !team2IsWinner && match.team2 && (
-                <span style={{ background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 900, padding: "2px 4px", borderRadius: 4, letterSpacing: 0.5, flexShrink: 0 }}>{isFinal ? "LOSER" : "L"}</span>
-              )}
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 900, flexShrink: 0, color: isFinal ? "#1f2937" : "var(--text-main)", minWidth: 24, textAlign: "right" }}>{match.score2 || 0}</div>
-          </div>
-        </div>
-      );
-    };
-
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
@@ -1008,39 +1071,74 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button 
+              type="button"
               onClick={handleAutoGenerateBracket} 
-              style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "2px solid rgba(56,189,248,0.3)", padding: "12px 24px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 16 }}
+              style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1.5px solid rgba(56,189,248,0.4)", padding: "10px 18px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}
+              title="Shuffle registered teams into Round 1"
             >
-              <RefreshCw size={20} /> AUTO-GENERATE
+              <RefreshCw size={16} /> Auto-Generate
             </button>
-            <button onClick={handleSaveBracket} style={{ background: "#38bdf8", color: "var(--bg)", border: "none", padding: "12px 24px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 16, boxShadow: "0 4px 8px rgba(56,189,248,0.3)" }}>
-              <Save size={20} /> SAVE BRACKET
+            <button 
+              type="button"
+              onClick={handleAdvanceByScores} 
+              style={{ background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1.5px solid rgba(16,185,129,0.4)", padding: "10px 18px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}
+              title="Calculate and advance winners based on entered scores"
+            >
+              <Zap size={16} /> Auto-Advance
+            </button>
+            <button 
+              type="button"
+              onClick={handleResetBracketProgress} 
+              style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1.5px solid rgba(239,68,68,0.4)", padding: "10px 18px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}
+              title="Reset scores and progression while keeping teams"
+            >
+              <RotateCcw size={16} /> Reset
+            </button>
+            <button 
+              type="button"
+              onClick={handleSaveBracket} 
+              style={{ background: "#38bdf8", color: "#0f172a", border: "none", padding: "10px 22px", borderRadius: 12, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, boxShadow: "0 4px 12px rgba(56,189,248,0.3)" }}
+            >
+              <Save size={16} /> SAVE BRACKET
             </button>
           </div>
         </div>
 
-        <div style={{ background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.3)", padding: 20, borderRadius: 12 }}>
-          <h3 style={{ margin: "0 0 12px", color: "#8b5cf6", fontSize: 18, fontWeight: 800 }}>⚙️ Semi-Automatic Progression</h3>
-          <p style={{ margin: "0 0 8px", color: "var(--text-main)", fontSize: 14, lineHeight: 1.5 }}>
-            <strong>1. Initial Setup:</strong> Select which teams face each other in Round 1 (Quarter-Finals or Semi-Finals) and hit SAVE BRACKET.
-          </p>
-          <p style={{ margin: "0 0 8px", color: "var(--text-main)", fontSize: 14, lineHeight: 1.5 }}>
-            <strong>2. Match Score Update:</strong> You don't update scores directly inside the bracket. Instead, go to the <strong>Matches</strong> tab to input stats and points while the game is ongoing.
-          </p>
-          <p style={{ margin: 0, color: "var(--text-main)", fontSize: 14, lineHeight: 1.5 }}>
-            <strong>3. Automatic Progression:</strong> Once a match is saved and a winner is determined, the system automatically advances that winning team to the next slot in the bracket!
-          </p>
+        <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", padding: 20, borderRadius: 14 }}>
+          <h3 style={{ margin: "0 0 10px", color: "#8b5cf6", fontSize: 16, fontWeight: 900 }}>⚡ Functional Tournament Management</h3>
+          <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 16, fontSize: 13, color: "var(--text-main)", lineHeight: 1.5 }}>
+            <div style={{ background: "var(--panel-bg)", padding: 14, borderRadius: 10, border: "1px solid var(--border-color)" }}>
+              <div style={{ fontWeight: 800, color: "#38bdf8", marginBottom: 4 }}>1. Seed & Pick Teams</div>
+              Select teams directly from the registered teams dropdown for each matchup, or hit <strong>Auto-Generate</strong>.
+            </div>
+            <div style={{ background: "var(--panel-bg)", padding: 14, borderRadius: 10, border: "1px solid var(--border-color)" }}>
+              <div style={{ fontWeight: 800, color: "#10b981", marginBottom: 4 }}>2. Advance Winners</div>
+              Click the <strong>ADVANCE</strong> button on any team, or enter scores and click <strong>Auto-Advance</strong> to cascade winners to the next round.
+            </div>
+            <div style={{ background: "var(--panel-bg)", padding: 14, borderRadius: 10, border: "1px solid var(--border-color)" }}>
+              <div style={{ fontWeight: 800, color: "#f59e0b", marginBottom: 4 }}>3. Live Scoring Sync</div>
+              Click <strong>Schedule Match</strong> on any matchup to score it in real time—the bracket updates automatically when the game finishes!
+            </div>
+          </div>
         </div>
 
-        <div style={{ overflowX: "auto", paddingBottom: 64, paddingTop: 32 }}>
-          <div style={{ minWidth: 1000, display: "flex", flexDirection: "column", alignItems: "center", background: "#eef2f6", padding: "48px 32px", borderRadius: 16 }}>
-            <h2 style={{ margin: "0 0 48px 0", fontSize: 28, fontWeight: 900, color: "#1f2937", textTransform: "uppercase", letterSpacing: 1.5 }}>Tournament Bracket</h2>
+        <div style={{ overflowX: "auto", paddingBottom: 64, paddingTop: 16 }}>
+          <div style={{ minWidth: mob ? "100%" : 1000, display: "flex", flexDirection: "column", alignItems: "center", background: "var(--panel-bg)", padding: mob ? "24px 16px" : "36px 32px", borderRadius: 18, border: "1px solid var(--border-color)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
+              <Trophy size={28} color="#f97316" />
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "var(--text-main)", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                {bracketSport} Tournament Bracket ({bracketDivision})
+              </h2>
+            </div>
+
             <TournamentBracket 
               bracket={editingBracket}
               sport={editingBracket.sport}
               isEditing={true}
+              availableTeams={teamsForSport.map(t => t.team_name)}
+              matches={db.matches}
               onMatchUpdate={(round, index, field, value) => {
                 let updated = { ...editingBracket };
                 if (round === "final") {
@@ -1051,10 +1149,12 @@ export default function Dashboard() {
                 }
                 setEditingBracket(updated);
               }}
-              onChampionUpdate={(val) => setEditingBracket({...editingBracket, champion: val})}
+              onSetWinner={handleSetWinner}
+              onScheduleMatch={handleScheduleBracketMatch}
+              onChampionUpdate={(val) => setEditingBracket({ ...editingBracket, champion: val })}
+              mob={mob}
             />
           </div>
-
         </div>
       </div>
     );

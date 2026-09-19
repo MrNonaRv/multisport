@@ -728,16 +728,20 @@ export default function SportPage() {
                         <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 20, textTransform: "uppercase", letterSpacing: 1 }}>{sport} Finals</div>
                         <div style={{ display: "flex", alignItems: "center", gap: mob ? 20 : 40, width: "100%", justifyContent: "center" }}>
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ width: mob ? 60 : 100, height: mob ? 60 : 100, borderRadius: "50%", background: "var(--border-color)", border: "2px solid var(--border-hover)", color: "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: mob ? 24 : 40, fontWeight: 900, marginBottom: 10 }}>{bracket.final.team1[0]}</div>
-                            <div style={{ fontWeight: 800, fontSize: 14 }}>{bracket.final.team1}</div>
+                            <div style={{ width: mob ? 60 : 100, height: mob ? 60 : 100, borderRadius: "50%", background: "var(--border-color)", border: "2px solid var(--border-hover)", color: "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: mob ? 24 : 40, fontWeight: 900, marginBottom: 10 }}>{bracket.final.team1 ? bracket.final.team1[0] : "?"}</div>
+                            <div style={{ fontWeight: 800, fontSize: 14 }}>{bracket.final.team1 || "TBD"}</div>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                            <div style={{ fontSize: mob ? 18 : 28, fontWeight: 900 }}>{bracket.champion.toUpperCase()} Wins</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.7 }}>Series Result</div>
+                            <div style={{ fontSize: mob ? 18 : 28, fontWeight: 900 }}>
+                              {bracket.champion ? `${bracket.champion.toUpperCase()} Wins` : "Finals Series"}
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.7 }}>
+                              {bracket.champion ? "Tournament Champion" : "Championship Matchup"}
+                            </div>
                           </div>
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ width: mob ? 60 : 100, height: mob ? 60 : 100, borderRadius: "50%", background: "var(--border-hover)", color: "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: mob ? 24 : 40, fontWeight: 900, marginBottom: 10, border: "2px solid var(--text-main)" }}>{bracket.final.team2[0]}</div>
-                            <div style={{ fontWeight: 800, fontSize: 14 }}>{bracket.final.team2}</div>
+                            <div style={{ width: mob ? 60 : 100, height: mob ? 60 : 100, borderRadius: "50%", background: "var(--border-hover)", color: "var(--text-main)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: mob ? 24 : 40, fontWeight: 900, marginBottom: 10, border: "2px solid var(--text-main)" }}>{bracket.final.team2 ? bracket.final.team2[0] : "?"}</div>
+                            <div style={{ fontWeight: 800, fontSize: 14 }}>{bracket.final.team2 || "TBD"}</div>
                           </div>
                         </div>
                       </div>
@@ -803,6 +807,7 @@ export default function SportPage() {
                       <TournamentBracket 
                         bracket={bracket}
                         sport={sport}
+                        matches={db.matches}
                         mob={mob}
                       />
                     </div>
