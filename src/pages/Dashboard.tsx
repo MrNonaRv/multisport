@@ -3,7 +3,7 @@ import { TournamentBracket } from "../components/TournamentBracket";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { Navigate, Link } from "react-router-dom";
-import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server, RotateCcw, Zap } from "lucide-react";
+import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server, RotateCcw, Zap, Calendar } from "lucide-react";
 import { card, PP, Badge } from "../components/Shared";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
 import { Match, Player, Team, User, Bracket, BracketMatch, Database } from "../types";
@@ -228,6 +228,52 @@ export default function Dashboard() {
   const [bracketDivision, setBracketDivision] = useState("Men's Division");
   useEffect(() => { if(!bracketSport && db.sports.length) setBracketSport(db.sports[0]); }, [db.sports, bracketSport]);
   const [editingBracket, setEditingBracket] = useState<Bracket | null>(null);
+
+  // Bracket Match Configuration Modal State
+  const [configureMatchSlot, setConfigureMatchSlot] = useState<{
+    round: "qf" | "sf" | "final";
+    index: number;
+    team1: string;
+    team2: string;
+  } | null>(null);
+  const [bracketModalTeam1, setBracketModalTeam1] = useState("");
+  const [bracketModalTeam2, setBracketModalTeam2] = useState("");
+  const [bracketModalDate, setBracketModalDate] = useState("");
+  const [bracketModalTime, setBracketModalTime] = useState("");
+  const [bracketModalVenue, setBracketModalVenue] = useState("");
+  const [bracketModalReferee, setBracketModalReferee] = useState("");
+
+  useEffect(() => {
+    if (configureMatchSlot) {
+      const { round, index, team1, team2 } = configureMatchSlot;
+      const roundLabel = round === "final" ? "Championship Final" : (round === "sf" ? `Semi-Final ${index + 1}` : `Quarter-Final ${index + 1}`);
+      const gameLabel = `${bracketSport} - ${roundLabel}`;
+      
+      const existingMatch = db.matches.find(m => 
+        m.sport === bracketSport && 
+        m.category === bracketDivision && 
+        m.game_label === gameLabel
+      );
+
+      if (existingMatch) {
+        const t1 = db.teams.find(t => t.team_id === existingMatch.team1_id);
+        const t2 = db.teams.find(t => t.team_id === existingMatch.team2_id);
+        setBracketModalTeam1(t1 ? t1.team_name : team1);
+        setBracketModalTeam2(t2 ? t2.team_name : team2);
+        setBracketModalDate(existingMatch.match_date || "");
+        setBracketModalTime(existingMatch.scheduled_start_time || "");
+        setBracketModalVenue(existingMatch.venue || "");
+        setBracketModalReferee(existingMatch.referee || "");
+      } else {
+        setBracketModalTeam1(team1 || "");
+        setBracketModalTeam2(team2 || "");
+        setBracketModalDate(new Date().toISOString().split("T")[0]);
+        setBracketModalTime("14:00");
+        setBracketModalVenue("Main Gymnasium");
+        setBracketModalReferee("");
+      }
+    }
+  }, [configureMatchSlot, bracketSport, bracketDivision, db.matches, db.teams]);
 
   // New Match State
   const [showAddMatchForm, setShowAddMatchForm] = useState(false);
@@ -487,28 +533,82 @@ export default function Dashboard() {
     }
 
     setEditingBracket(newBracket);
+    updateBracket(bracketSport, newBracket);
   };
 
   const handleScheduleBracketMatch = (round: "qf" | "sf" | "final", index: number, team1: string, team2: string) => {
-    const t1 = db.teams.find(t => t.team_name.trim().toLowerCase() === team1.trim().toLowerCase() && t.sport === bracketSport);
-    const t2 = db.teams.find(t => t.team_name.trim().toLowerCase() === team2.trim().toLowerCase() && t.sport === bracketSport);
-    if (!t1 || !t2) {
-      return showMsg("e", "Both teams must be registered teams to schedule a match.");
-    }
-    const roundLabel = round === "final" ? "Championship Final" : (round === "sf" ? `Semi-Final ${index + 1}` : `Quarter-Final ${index + 1}`);
-    setNewMatch({
-      team1_id: String(t1.team_id),
-      team2_id: String(t2.team_id),
-      match_date: new Date().toISOString().split("T")[0],
-      game_label: `${bracketSport} - ${roundLabel}`,
-      venue: "Main Gymnasium",
-      referee: "",
-      category: bracketDivision,
-      scheduled_start_time: "14:00"
+    setConfigureMatchSlot({
+      round,
+      index,
+      team1: team1 || "",
+      team2: team2 || ""
     });
-    setActiveTab("matches");
-    setShowAddMatchForm(true);
-    showMsg("s", `Pre-filled match for ${team1} vs ${team2}! Configure and click Create Match.`);
+  };
+
+  const handleSaveBracketMatchConfig = () => {
+    if (!configureMatchSlot || !editingBracket) return;
+    const { round, index } = configureMatchSlot;
+    const roundLabel = round === "final" ? "Championship Final" : (round === "sf" ? `Semi-Final ${index + 1}` : `Quarter-Final ${index + 1}`);
+    const gameLabel = `${bracketSport} - ${roundLabel}`;
+
+    // 1. Update the bracket slot
+    const updatedBracket = JSON.parse(JSON.stringify(editingBracket));
+    if (round === "final") {
+      updatedBracket.final.team1 = bracketModalTeam1;
+      updatedBracket.final.team2 = bracketModalTeam2;
+    } else {
+      updatedBracket[round] = [...updatedBracket[round]];
+      updatedBracket[round][index].team1 = bracketModalTeam1;
+      updatedBracket[round][index].team2 = bracketModalTeam2;
+    }
+
+    setEditingBracket(updatedBracket);
+    updateBracket(bracketSport, updatedBracket);
+
+    // 2. Schedule or update match in db.matches
+    const t1 = db.teams.find(t => t.team_name.trim().toLowerCase() === bracketModalTeam1.trim().toLowerCase() && t.sport === bracketSport);
+    const t2 = db.teams.find(t => t.team_name.trim().toLowerCase() === bracketModalTeam2.trim().toLowerCase() && t.sport === bracketSport);
+
+    const existingMatch = db.matches.find(m => 
+      m.sport === bracketSport && 
+      m.category === bracketDivision && 
+      m.game_label === gameLabel
+    );
+
+    if (t1 && t2) {
+      if (existingMatch) {
+        updateMatchLiveState(existingMatch.match_id, {
+          team1_id: t1.team_id,
+          team2_id: t2.team_id,
+          match_date: bracketModalDate,
+          scheduled_start_time: bracketModalTime,
+          venue: bracketModalVenue,
+          referee: bracketModalReferee,
+        });
+        showMsg("s", `Updated scheduled match: ${bracketModalTeam1} vs ${bracketModalTeam2}!`);
+      } else {
+        addMatch({
+          sport: bracketSport,
+          team1_id: t1.team_id,
+          team2_id: t2.team_id,
+          match_date: bracketModalDate,
+          score_team1: 0,
+          score_team2: 0,
+          winner: null,
+          status: "upcoming",
+          game_label: gameLabel,
+          category: bracketDivision,
+          venue: bracketModalVenue,
+          referee: bracketModalReferee,
+          scheduled_start_time: bracketModalTime,
+        });
+        showMsg("s", `Successfully scheduled match: ${bracketModalTeam1} vs ${bracketModalTeam2}!`);
+      }
+    } else {
+      showMsg("s", "Bracket slot teams updated! Connect registered teams to schedule a live game.");
+    }
+
+    setConfigureMatchSlot(null);
   };
 
   const handleAdvanceByScores = () => {
@@ -1148,10 +1248,15 @@ export default function Dashboard() {
                   updated[round][index] = { ...updated[round][index], [field]: value };
                 }
                 setEditingBracket(updated);
+                updateBracket(bracketSport, updated);
               }}
               onSetWinner={handleSetWinner}
               onScheduleMatch={handleScheduleBracketMatch}
-              onChampionUpdate={(val) => setEditingBracket({ ...editingBracket, champion: val })}
+              onChampionUpdate={(val) => {
+                const updated = { ...editingBracket, champion: val };
+                setEditingBracket(updated);
+                updateBracket(bracketSport, updated);
+              }}
               mob={mob}
             />
           </div>
@@ -1740,6 +1845,162 @@ const getStat = (playerId: number, statKey: string) => {
     );
   };
 
+  const renderConfigureMatchSlotModal = () => {
+    if (!configureMatchSlot) return null;
+    const { round, index } = configureMatchSlot;
+    const roundLabel = round === "final" ? "Championship Final" : (round === "sf" ? `Semi-Final ${index + 1}` : `Quarter-Final ${index + 1}`);
+    const gameLabel = `${bracketSport} - ${roundLabel}`;
+    
+    const teamsForSportAndCategory = db.teams.filter(t => t.sport === bracketSport && (!t.category || t.category === bracketDivision));
+
+    return (
+      <div 
+        id="bracket-config-modal"
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(4px)",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16
+        }}
+        onClick={() => setConfigureMatchSlot(null)}
+      >
+        <div 
+          style={{
+            background: "var(--panel-bg)",
+            border: "1.5px solid var(--border-color)",
+            borderRadius: 20,
+            padding: 28,
+            maxWidth: 480,
+            width: "100%",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.4), 0 0 20px var(--glow-color)",
+            color: "var(--text-main)",
+            maxHeight: "90vh",
+            overflowY: "auto"
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#38bdf8", letterSpacing: 1.2 }}>
+                {bracketSport} • {bracketDivision}
+              </span>
+              <h3 style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 900, color: "var(--text-main)" }}>Next Match Configuration</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfigureMatchSlot(null)}
+              style={{ background: "var(--border-color)", border: "none", borderRadius: 10, padding: 8, cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+              <Trophy size={18} color="#38bdf8" />
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)" }}>
+                Slot: <span style={{ color: "#38bdf8", fontWeight: 800 }}>{roundLabel}</span>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>Opponent Team 1</label>
+              <select
+                value={bracketModalTeam1}
+                onChange={e => setBracketModalTeam1(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 15, fontWeight: 700, outline: "none" }}
+              >
+                <option value="" style={{ color: "#000" }}>-- Select Team 1 (TBD) --</option>
+                {teamsForSportAndCategory.map(t => (
+                  <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>Opponent Team 2</label>
+              <select
+                value={bracketModalTeam2}
+                onChange={e => setBracketModalTeam2(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 15, fontWeight: 700, outline: "none" }}
+              >
+                <option value="" style={{ color: "#000" }}>-- Select Team 2 (TBD) --</option>
+                {teamsForSportAndCategory.map(t => (
+                  <option key={t.team_id} value={t.team_name} style={{ color: "#000" }}>{t.team_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>Date</label>
+                <input
+                  type="date"
+                  value={bracketModalDate}
+                  onChange={e => setBracketModalDate(e.target.value)}
+                  style={{ width: "100%", padding: 12, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 14, fontWeight: 700, outline: "none" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>Start Time</label>
+                <input
+                  type="time"
+                  value={bracketModalTime}
+                  onChange={e => setBracketModalTime(e.target.value)}
+                  style={{ width: "100%", padding: 12, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 14, fontWeight: 700, outline: "none" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>Venue</label>
+              <input
+                type="text"
+                placeholder="e.g. Main Gymnasium"
+                value={bracketModalVenue}
+                onChange={e => setBracketModalVenue(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 14, fontWeight: 700, outline: "none" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>Referee Name</label>
+              <input
+                type="text"
+                placeholder="e.g. John Doe"
+                value={bracketModalReferee}
+                onChange={e => setBracketModalReferee(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 14, fontWeight: 700, outline: "none" }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
+            <button
+              type="button"
+              onClick={() => setConfigureMatchSlot(null)}
+              style={{ flex: 1, padding: "14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "transparent", color: "var(--text-muted)", fontSize: 14, fontWeight: 800, cursor: "pointer", transition: "all 0.2s" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveBracketMatchConfig}
+              style={{ flex: 1.5, padding: "14px", borderRadius: 12, border: "none", background: "#38bdf8", color: "#0f172a", fontSize: 14, fontWeight: 900, cursor: "pointer", boxShadow: "0 4px 14px rgba(56, 189, 248, 0.3)", transition: "all 0.2s" }}
+            >
+              Save & Schedule
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", position: "relative", zIndex: 1, flexDirection: "row" }}>
       {renderSidebar()}
@@ -1795,6 +2056,7 @@ const getStat = (playerId: number, statKey: string) => {
         </div>
 
         {renderBoxScoreModal()}
+        {renderConfigureMatchSlotModal()}
         {liveControlMatch && <LiveMatchControlModal matchId={liveControlMatch} onClose={() => setLiveControlMatch(null)} />}
       </div>
     </div>

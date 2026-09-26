@@ -319,28 +319,29 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = ({
 
           {/* Quick Action Footer */}
           <div style={{ display: "flex", gap: 6, marginTop: 4, paddingTop: 6, borderTop: "1px solid #f1f5f9" }}>
-            {match.team1 && match.team2 && onScheduleMatch && (
+            {onScheduleMatch && (
               <button
                 type="button"
                 id={`btn-schedule-${round}-${index}`}
-                onClick={() => onScheduleMatch(round, index, match.team1, match.team2)}
+                onClick={() => onScheduleMatch(round, index, match.team1 || "", match.team2 || "")}
                 style={{
                   flex: 1,
-                  background: "rgba(56, 189, 248, 0.1)",
-                  color: "#0284c7",
+                  background: "rgba(56, 189, 248, 0.15)",
+                  color: "#0ea5e9",
                   border: "1px solid rgba(56, 189, 248, 0.3)",
-                  borderRadius: 6,
-                  padding: "5px 8px",
-                  fontSize: 11,
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  fontSize: 12,
                   fontWeight: 800,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 4
+                  gap: 6,
+                  transition: "all 0.2s"
                 }}
               >
-                <Play size={11} /> Schedule Match
+                <Calendar size={13} /> Configure Match
               </button>
             )}
 

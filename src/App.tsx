@@ -19,6 +19,7 @@ function GameNotifications() {
   const [activeNotifications, setActiveNotifications] = useState<any[]>([]);
   const prevLiveMatches = useRef<string[]>([]);
   const prevActions = useRef<Record<string, string>>({});
+  const prevBrackets = useRef<Record<string, any>>({});
   
   useEffect(() => {
     // Detect new live matches
@@ -99,9 +100,101 @@ function GameNotifications() {
       }
       prevActions.current[m.match_id] = currentActionTime || "";
     });
-    
+
+    // Detect bracket updates in real time
+    const currentBracketsMap: Record<string, any> = {};
+    if (db.brackets) {
+      db.brackets.forEach(b => {
+        const sport = b.sport;
+        const cat = b.category || "General";
+        
+        b.qf?.forEach((m, i) => {
+          currentBracketsMap[`${sport}_${cat}_qf_${i}_winner`] = m.winner || "";
+          currentBracketsMap[`${sport}_${cat}_qf_${i}_team1`] = m.team1 || "";
+          currentBracketsMap[`${sport}_${cat}_qf_${i}_team2`] = m.team2 || "";
+        });
+        
+        b.sf?.forEach((m, i) => {
+          currentBracketsMap[`${sport}_${cat}_sf_${i}_winner`] = m.winner || "";
+          currentBracketsMap[`${sport}_${cat}_sf_${i}_team1`] = m.team1 || "";
+          currentBracketsMap[`${sport}_${cat}_sf_${i}_team2`] = m.team2 || "";
+        });
+        
+        if (b.final) {
+          currentBracketsMap[`${sport}_${cat}_final_winner`] = b.final.winner || "";
+          currentBracketsMap[`${sport}_${cat}_final_team1`] = b.final.team1 || "";
+          currentBracketsMap[`${sport}_${cat}_final_team2`] = b.final.team2 || "";
+        }
+        currentBracketsMap[`${sport}_${cat}_champion`] = b.champion || "";
+      });
+    }
+
+    const hasPrevBrackets = Object.keys(prevBrackets.current).length > 0;
+    if (hasPrevBrackets) {
+      Object.keys(currentBracketsMap).forEach(key => {
+        const prevVal = prevBrackets.current[key] || "";
+        const currVal = currentBracketsMap[key];
+        
+        if (currVal && currVal !== prevVal) {
+          const parts = key.split("_");
+          const sport = parts[0];
+          const cat = parts[1];
+          const round = parts[2];
+          
+          if (key.endsWith("_winner")) {
+            const idx = parseInt(parts[3]) || 0;
+            let roundName = "";
+            if (round === "qf") roundName = `Quarter-Final ${idx + 1}`;
+            else if (round === "sf") roundName = `Semi-Final ${idx + 1}`;
+            else roundName = "Championship Final";
+            
+            const notif = {
+              id: Date.now() + Math.random(),
+              title: `🏆 Bracket Update: ${sport}`,
+              body: `${currVal} won the ${roundName} (${cat})!`,
+              sport,
+            };
+            setActiveNotifications(prev => [notif, ...prev]);
+            setTimeout(() => {
+              setActiveNotifications(prev => prev.filter(n => n.id !== notif.id));
+            }, 8000);
+          } else if (key.endsWith("_team1") || key.endsWith("_team2")) {
+            const idx = parseInt(parts[3]) || 0;
+            let roundName = "";
+            if (round === "sf") roundName = `Semi-Final ${idx + 1}`;
+            else if (round === "final") roundName = "Championship Final";
+            
+            if (roundName) {
+              const notif = {
+                id: Date.now() + Math.random(),
+                title: `🚀 Team Advanced: ${sport}`,
+                body: `${currVal} is ready for the next match!`,
+                sport,
+              };
+              setActiveNotifications(prev => [notif, ...prev]);
+              setTimeout(() => {
+                setActiveNotifications(prev => prev.filter(n => n.id !== notif.id));
+              }, 8000);
+            }
+          } else if (key.endsWith("_champion")) {
+            const notif = {
+              id: Date.now() + Math.random(),
+              title: `👑 Champion Declared!`,
+              body: `${currVal} is ready and has won the ${sport} Championship (${cat})!`,
+              sport,
+            };
+            setActiveNotifications(prev => [notif, ...prev]);
+            setTimeout(() => {
+              setActiveNotifications(prev => prev.filter(n => n.id !== notif.id));
+            }, 8000);
+          }
+        }
+      });
+    }
+
+    prevBrackets.current = currentBracketsMap;
     prevLiveMatches.current = currentLiveIds;
-  }, [db.matches, db.teams]);
+  }, [db.matches, db.teams, db.brackets]);
   
   // Do not show notifications on admin pages
   if (loc.pathname.startsWith("/dashboard") || loc.pathname.startsWith("/login")) return null;

@@ -611,6 +611,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           if (slotFound) {
              updatedBrackets[bIndex] = updatedBracket;
              nextDb.brackets = updatedBrackets;
+             
+             const teamMessage = `🏆 ${updatedWinner} has advanced in ${sport} (${matchToUpd.category || "Men's Division"}) and is ready for the next match!`;
+             const newId = nextDb.activityLogs.length > 0 ? Math.max(...nextDb.activityLogs.map(l => l.id)) + 1 : 1;
+             nextDb.activityLogs = [{ id: newId, message: teamMessage, timestamp: new Date().toISOString() }, ...nextDb.activityLogs].slice(0, 50);
           }
         }
       }
@@ -937,6 +941,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             if (slotFound) {
               updatedBrackets[bIndex] = updatedBracket;
               nextDb.brackets = updatedBrackets;
+              
+              const teamMessage = `🏆 ${updatedM.winner} has advanced in ${sport} (${updatedM.category || "Men's Division"}) and is ready for the next match!`;
+              const newId = nextDb.activityLogs.length > 0 ? Math.max(...nextDb.activityLogs.map(l => l.id)) + 1 : 1;
+              nextDb.activityLogs = [{ id: newId, message: teamMessage, timestamp: new Date().toISOString() }, ...nextDb.activityLogs].slice(0, 50);
             }
           }
         }
