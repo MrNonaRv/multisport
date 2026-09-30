@@ -565,7 +565,7 @@ export default function Dashboard() {
     setEditingBracket(updatedBracket);
     updateBracket(bracketSport, updatedBracket);
 
-    // 2. Schedule or update match in db.matches
+    // 2. Schedule or update match in db.matches if details provided
     const t1 = db.teams.find(t => t.team_name.trim().toLowerCase() === bracketModalTeam1.trim().toLowerCase() && t.sport === bracketSport);
     const t2 = db.teams.find(t => t.team_name.trim().toLowerCase() === bracketModalTeam2.trim().toLowerCase() && t.sport === bracketSport);
 
@@ -575,7 +575,7 @@ export default function Dashboard() {
       m.game_label === gameLabel
     );
 
-    if (t1 && t2) {
+    if (t1 && t2 && bracketModalDate && bracketModalTime) {
       if (existingMatch) {
         updateMatchLiveState(existingMatch.match_id, {
           team1_id: t1.team_id,
@@ -604,8 +604,10 @@ export default function Dashboard() {
         });
         showMsg("s", `Successfully scheduled match: ${bracketModalTeam1} vs ${bracketModalTeam2}!`);
       }
+    } else if (t1 && t2) {
+      showMsg("s", "Bracket slot teams updated! Details saved as pending (TBD).");
     } else {
-      showMsg("s", "Bracket slot teams updated! Connect registered teams to schedule a live game.");
+      showMsg("s", "Bracket slot teams updated!");
     }
 
     setConfigureMatchSlot(null);
@@ -1986,14 +1988,14 @@ const getStat = (playerId: number, statKey: string) => {
               onClick={() => setConfigureMatchSlot(null)}
               style={{ flex: 1, padding: "14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "transparent", color: "var(--text-muted)", fontSize: 14, fontWeight: 800, cursor: "pointer", transition: "all 0.2s" }}
             >
-              Cancel
+              Skip / Cancel
             </button>
             <button
               type="button"
               onClick={handleSaveBracketMatchConfig}
               style={{ flex: 1.5, padding: "14px", borderRadius: 12, border: "none", background: "#38bdf8", color: "#0f172a", fontSize: 14, fontWeight: 900, cursor: "pointer", boxShadow: "0 4px 14px rgba(56, 189, 248, 0.3)", transition: "all 0.2s" }}
             >
-              Save & Schedule
+              Save Details
             </button>
           </div>
         </div>
