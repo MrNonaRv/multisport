@@ -261,7 +261,24 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     isWritingRef.current = true;
     lastWriteTimeRef.current = Date.now();
     const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
-    const dataToSave = latestDbRef.current;
+    
+    // Sanitize data to remove undefined values before saving to Firestore
+    const sanitizeData = (data: any): any => {
+      if (data === undefined) return null;
+      if (Array.isArray(data)) return data.map(sanitizeData);
+      if (typeof data === 'object' && data !== null) {
+        const sanitized: any = {};
+        Object.keys(data).forEach(key => {
+          if (data[key] !== undefined) {
+            sanitized[key] = sanitizeData(data[key]);
+          }
+        });
+        return sanitized;
+      }
+      return data;
+    };
+    
+    const dataToSave = sanitizeData(latestDbRef.current);
 
     setDoc(docRef, dataToSave, { merge: false })
       .then(() => {

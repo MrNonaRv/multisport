@@ -195,7 +195,7 @@ export default function Dashboard() {
   // Add Team State
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamSport, setNewTeamSport] = useState("");
-  const [newTeamCategory, setNewTeamCategory] = useState("Men's Division");
+  const [newTeamCategory, setNewTeamCategory] = useState("Open Division");
   useEffect(() => { if(!newTeamSport && db.sports.length) setNewTeamSport(db.sports[0]); }, [db.sports, newTeamSport]);
   const [newTeamCoach, setNewTeamCoach] = useState("");
   const [newTeamLogo, setNewTeamLogo] = useState("");
@@ -207,7 +207,7 @@ export default function Dashboard() {
   const [newPlayerGender, setNewPlayerGender] = useState("Male");
   const [newPlayerPhoto, setNewPlayerPhoto] = useState("");
 
-  const [newPlayerDivision, setNewPlayerDivision] = useState("Men's Division");
+  const [newPlayerDivision, setNewPlayerDivision] = useState("Open Division");
   // Add User State
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -225,7 +225,7 @@ export default function Dashboard() {
 
   // Bracket State
   const [bracketSport, setBracketSport] = useState("");
-  const [bracketDivision, setBracketDivision] = useState("Men's Division");
+  const [bracketDivision, setBracketDivision] = useState("Open Division");
   useEffect(() => { if(!bracketSport && db.sports.length) setBracketSport(db.sports[0]); }, [db.sports, bracketSport]);
   const [editingBracket, setEditingBracket] = useState<Bracket | null>(null);
 
@@ -284,7 +284,7 @@ export default function Dashboard() {
     game_label: "",
     venue: "",
     referee: "",
-    category: "Men's Division",
+    category: "Open Division",
     scheduled_start_time: ""
   });
 
@@ -873,13 +873,14 @@ export default function Dashboard() {
                 <div>
                   <label style={{ display: "block", fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Division / Category</label>
                   <select 
-                    value={newMatch.category || "Men's Division"} 
+                    value={newMatch.category || "Open Division"} 
                     onChange={e => setNewMatch({...newMatch, category: e.target.value})}
                     style={{ width: "100%", padding: 12, borderRadius: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", color: "var(--text-main)", fontSize: 16, fontWeight: 700 }}
                   >
                     <option value="Men's Division">Men's Division</option>
+                    <option value="Open Division">Open Division</option>
                     <option value="Women's Division">Women's Division</option>
-                    <option value="Mixed">Mixed / Open</option>
+                    <option value="Mixed Division">Mixed Division</option>
                   </select>
                 </div>
                 <div>
@@ -1004,11 +1005,13 @@ export default function Dashboard() {
               {db.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
             </select>
           </div>
-          <div>
+          <div style={{ position: "relative", zIndex: 10 }}>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Division</label>
             <select value={newTeamCategory} onChange={e => setNewTeamCategory(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
               <option value="Men's Division" style={{ color: "#000" }}>Men's Division</option>
+              <option value="Open Division" style={{ color: "#000" }}>Open Division</option>
               <option value="Women's Division" style={{ color: "#000" }}>Women's Division</option>
+              <option value="Mixed Division" style={{ color: "#000" }}>Mixed Division</option>
             </select>
           </div>
           <div>
@@ -1058,11 +1061,12 @@ export default function Dashboard() {
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Player Name</label>
             <input type="text" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} placeholder="e.g. John Doe" style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }} />
           </div>
-          <div>
+          <div style={{ position: "relative", zIndex: 10 }}>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Gender</label>
             <select value={newPlayerGender} onChange={e => setNewPlayerGender(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
               <option value="Male" style={{ color: "#000" }}>Male</option>
               <option value="Female" style={{ color: "#000" }}>Female</option>
+              <option value="Non-binary" style={{ color: "#000" }}>Non-binary</option>
             </select>
           </div>
           <div>
@@ -1072,12 +1076,13 @@ export default function Dashboard() {
               <input type="file" accept="image/*" onChange={handlePlayerPhotoUpload} style={{ background: "var(--panel-bg)", color: "var(--text-main)", fontSize: 14 }} />
             </div>
           </div>
-          <div>
+          <div style={{ position: "relative", zIndex: 10 }}>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Division</label>
             <select value={newPlayerDivision} onChange={e => { setNewPlayerDivision(e.target.value); setNewPlayerTeam(""); }} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
               <option value="Men's Division" style={{ color: "#000" }}>Men's Division</option>
+              <option value="Open Division" style={{ color: "#000" }}>Open Division</option>
               <option value="Women's Division" style={{ color: "#000" }}>Women's Division</option>
-              <option value="Mixed" style={{ color: "#000" }}>Mixed</option>
+              <option value="Mixed Division" style={{ color: "#000" }}>Mixed Division</option>
             </select>
           </div>
           <div>
@@ -1150,7 +1155,9 @@ export default function Dashboard() {
               }}
             >
               <option value="Men's Division">Men's Division</option>
+              <option value="Open Division">Open Division</option>
               <option value="Women's Division">Women's Division</option>
+              <option value="Mixed Division">Mixed Division</option>
             </select>
             {db.sports.map(s => (
               <button
