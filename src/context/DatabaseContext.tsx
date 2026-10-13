@@ -244,6 +244,22 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Sanitize data to remove undefined values before saving to Firestore
+  const sanitizeData = (data: any): any => {
+    if (data === undefined) return null;
+    if (Array.isArray(data)) return data.map(sanitizeData);
+    if (typeof data === 'object' && data !== null) {
+      const sanitized: any = {};
+      Object.keys(data).forEach(key => {
+        if (data[key] !== undefined) {
+          sanitized[key] = sanitizeData(data[key]);
+        }
+      });
+      return sanitized;
+    }
+    return data;
+  };
+
   // Flush to Firestore worker
   const flushToFirestore = useCallback(() => {
     if (syncTimerRef.current) {
@@ -261,22 +277,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     isWritingRef.current = true;
     lastWriteTimeRef.current = Date.now();
     const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
-    
-    // Sanitize data to remove undefined values before saving to Firestore
-    const sanitizeData = (data: any): any => {
-      if (data === undefined) return null;
-      if (Array.isArray(data)) return data.map(sanitizeData);
-      if (typeof data === 'object' && data !== null) {
-        const sanitized: any = {};
-        Object.keys(data).forEach(key => {
-          if (data[key] !== undefined) {
-            sanitized[key] = sanitizeData(data[key]);
-          }
-        });
-        return sanitized;
-      }
-      return data;
-    };
     
     const dataToSave = sanitizeData(latestDbRef.current);
 
@@ -306,7 +306,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 50 - (Date.now() - lastWriteTimeRef.current)));
         }
       });
-  }, []);
+  }, [sanitizeData]);
 
   const scheduleFirestoreSync = useCallback((immediate: boolean = false) => {
     if (syncTimerRef.current) {
@@ -365,7 +365,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         // Document does not exist yet in this Firestore database (e.g. freshly connected project).
         // Automatically save the current database state so all clients can read it.
         const currentData = latestDbRef.current || initDB();
-        setDoc(docRef, currentData, { merge: false })
+        setDoc(docRef, sanitizeData(currentData), { merge: false })
           .then(() => {
             console.log("Initialized sports_db document in Firestore database successfully");
           })

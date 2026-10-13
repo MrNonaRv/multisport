@@ -162,7 +162,7 @@ export function initDB() {
           player_name: name,
           team_id: tId,
           sport,
-      category: "Men's Division",
+          category: gender === "Female" ? "Women's Division" : "Men's Division",
           jersey_number,
           gender
         });

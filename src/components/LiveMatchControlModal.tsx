@@ -110,6 +110,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   const [subToast, setSubToast] = useState<string | null>(null);
   const [pendingSubOut, setPendingSubOut] = useState<Player | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [isTimeout, setIsTimeout] = useState(false);
 
   // Sync active players if updated from match object
   useEffect(() => {
@@ -233,9 +234,10 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   
   const isMens = match.category === "Men's Division";
   const isWomens = match.category === "Women's Division";
+  const isMixedOrOpen = !match.category || match.category === "Mixed Division" || match.category === "Open Division";
 
-  const t1Players = db.players.filter(p => p.team_id === match.team1_id && (!isMens || p.gender === "Male") && (!isWomens || p.gender === "Female"));
-  const t2Players = db.players.filter(p => p.team_id === match.team2_id && (!isMens || p.gender === "Male") && (!isWomens || p.gender === "Female"));
+  const t1Players = db.players.filter(p => p.team_id === match.team1_id && (isMixedOrOpen || (isMens && p.gender === "Male") || (isWomens && p.gender === "Female")));
+  const t2Players = db.players.filter(p => p.team_id === match.team2_id && (isMixedOrOpen || (isMens && p.gender === "Male") || (isWomens && p.gender === "Female")));
 
   const actions = QUICK_ACTIONS[match.sport] || [{ label: "+1 Point", stat: "points", pts: 1, inc: 1 }];
 
@@ -434,6 +436,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
         activityLogMessage: `${user?.name || "Official"} paused clock at ${str}`
       });
     } else {
+      setIsTimeout(false);
       let t = time;
       if (!t || t === "0:00" || t === "0") {
          t = match.sport === "Basketball" ? "10:00" : (match.sport === "Volleyball" ? "15:00" : "10:00");
@@ -453,6 +456,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   };
 
   const handleTimeout = (isTeam1: boolean) => {
+    setIsTimeout(true);
     let t1outs = match.timeouts_team1 !== undefined ? match.timeouts_team1 : 2;
     let t2outs = match.timeouts_team2 !== undefined ? match.timeouts_team2 : 2;
     
@@ -717,9 +721,10 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                         const isFoul = a.stat === "fouls" || a.stat === "errors" || a.stat === "gam_jeom";
                         const isReb = a.label === "Reb" || a.label === "Ast" || a.label === "Stl" || a.label === "Blk";
                         const shortLabel = a.label.replace(" Pts", "").replace(" Pt", "").replace("Point (+1)", "+1");
+                        const isDisabled = isTimeout || match.status === 'upcoming' || match.status === 'pending';
                         
                         return (
-                          <button key={a.label} onClick={() => handleQuickAction(p, a, true)} style={{ 
+                          <button key={a.label} disabled={isDisabled} onClick={() => handleQuickAction(p, a, true)} style={{ 
                             background: isFoul ? "#fef2f2" : (isReb ? "#f8fafc" : "#2563eb"), 
                             color: isFoul ? "#ef4444" : (isReb ? "#64748b" : "white"), 
                             border: isReb ? "1px solid #e2e8f0" : "none", 
@@ -727,7 +732,8 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                             borderRadius: "100px", 
                             fontSize: isReb ? "10px" : "12px", 
                             fontWeight: "600", 
-                            cursor: "pointer",
+                            cursor: isDisabled ? "not-allowed" : "pointer",
+                            opacity: isDisabled ? 0.4 : 1,
                             minWidth: isReb ? "auto" : "36px",
                             display: "flex",
                             alignItems: "center",
@@ -805,9 +811,10 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                         const isFoul = a.stat === "fouls" || a.stat === "errors" || a.stat === "gam_jeom";
                         const isReb = a.label === "Reb" || a.label === "Ast" || a.label === "Stl" || a.label === "Blk";
                         const shortLabel = a.label.replace(" Pts", "").replace(" Pt", "").replace("Point (+1)", "+1");
+                        const isDisabled = isTimeout || match.status === 'upcoming' || match.status === 'pending';
                         
                         return (
-                          <button key={a.label} onClick={() => handleQuickAction(p, a, false)} style={{ 
+                          <button key={a.label} disabled={isDisabled} onClick={() => handleQuickAction(p, a, false)} style={{ 
                             background: isFoul ? "#fef2f2" : (isReb ? "#f8fafc" : "#2563eb"), 
                             color: isFoul ? "#ef4444" : (isReb ? "#64748b" : "white"), 
                             border: isReb ? "1px solid #e2e8f0" : "none", 
@@ -815,7 +822,8 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                             borderRadius: "100px", 
                             fontSize: isReb ? "10px" : "12px", 
                             fontWeight: "600", 
-                            cursor: "pointer",
+                            cursor: isDisabled ? "not-allowed" : "pointer",
+                            opacity: isDisabled ? 0.4 : 1,
                             minWidth: isReb ? "auto" : "36px",
                             display: "flex",
                             alignItems: "center",
