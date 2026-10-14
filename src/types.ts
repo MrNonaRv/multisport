@@ -12,6 +12,7 @@ export interface Player {
   player_name: string;
   team_id: number;
   sport: string;
+  category?: string;
   jersey_number: number | string; // allowing string for colors "Red" | "Blue"
   gender?: "Male" | "Female";
   photo_url?: string;

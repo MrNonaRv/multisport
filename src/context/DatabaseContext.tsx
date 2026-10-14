@@ -3,6 +3,7 @@ import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db as firestoreDb, auth, testConnection } from "../lib/firebase";
 import { initDB, S_STATS } from "../db";
 import { Database, Match, Team, Player, User, PlayerStat, ActivityLog, Bracket, Referee } from "../types";
+import { compressDataUrl } from "../utils/imageOptimizer";
 
 const STORAGE_KEY = "multisports_db_v8";
 const FIRESTORE_DOC_ID = "data/sports_db_v2";
@@ -49,6 +50,7 @@ interface DatabaseContextType {
   db: Database;
   loading: boolean;
   isQuotaExceeded?: boolean;
+  databaseSizeBytes: number;
   adminNotifications: { id: string; message: string; type: "success" | "info" | "warning"; timestamp: number }[];
   addAdminNotification: (message: string, type?: "success" | "info" | "warning") => void;
   updateMatchScore: (matchId: number, team1Score: number, team2Score: number) => void;
@@ -75,6 +77,7 @@ interface DatabaseContextType {
   exportDatabaseJSON: () => void;
   importDatabaseJSON: (importedDb: Database) => Promise<boolean>;
   forceSyncToCloud: () => Promise<boolean>;
+  optimizeAllImages: () => Promise<{ optimizedCount: number; bytesSaved: number }>;
   transferToNewFirebase: (newConfig: any) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -280,6 +283,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     
     const dataToSave = sanitizeData(latestDbRef.current);
 
+    // Guard against Firestore 1 MiB (1,048,576 bytes) document size limit
+    const jsonStr = JSON.stringify(dataToSave);
+    const payloadBytes = new Blob([jsonStr]).size;
+    if (payloadBytes > 950000) {
+      console.warn(`Firestore document is close to or exceeds limit: ${(payloadBytes / 1024).toFixed(1)} KB / 1,024 KB`);
+      addAdminNotification(`⚠️ Database is ${(payloadBytes / 1024).toFixed(1)} KB (near 1,024 KB Firestore limit). Uncompressed photos must be compressed.`, "warning");
+    }
+
     setDoc(docRef, dataToSave, { merge: false })
       .then(() => {
         // Successful sync to cloud
@@ -287,12 +298,21 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         const errorMsg = err instanceof Error ? err.message : String(err);
         const isQuota = errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("resource-exhausted");
+        const isSizeLimit = errorMsg.toLowerCase().includes("size limit") || errorMsg.toLowerCase().includes("too large") || errorMsg.toLowerCase().includes("maximum size");
+        
         if (isQuota) {
           quotaExceeded = true;
           if (globalSetQuotaExceeded) {
             globalSetQuotaExceeded(true);
           }
+          addAdminNotification("⚠️ Firestore quota exceeded. Database is operating in cached mode.", "warning");
+        } else if (isSizeLimit) {
+          addAdminNotification("⚠️ Cloud save rejected: Database document exceeds 1MB limit. High-resolution images must be optimized.", "warning");
+        } else {
+          console.warn("Firestore write sync notice:", errorMsg);
+          addAdminNotification(`⚠️ Cloud sync notice: ${errorMsg}`, "warning");
         }
+
         try {
           handleFirestoreError(err, OperationType.WRITE, FIRESTORE_DOC_ID);
         } catch (e) {
@@ -306,7 +326,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           syncTimerRef.current = setTimeout(flushToFirestore, Math.max(0, 50 - (Date.now() - lastWriteTimeRef.current)));
         }
       });
-  }, [sanitizeData]);
+  }, [sanitizeData, addAdminNotification]);
 
   const scheduleFirestoreSync = useCallback((immediate: boolean = false) => {
     if (syncTimerRef.current) {
@@ -350,6 +370,20 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             qf: b.qf || Array(4).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
             sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
           }));
+
+          const currentLastUpdated = latestDbRef.current?.lastUpdated || 0;
+          const incomingLastUpdated = parsed.lastUpdated || 0;
+
+          // Prevent race condition: do not overwrite local unconfirmed edits if write is in progress
+          // or if local state has newer timestamp than incoming snapshot
+          if (latestDbRef.current && (isWritingRef.current || pendingWriteRef.current)) {
+            setLoading(false);
+            return;
+          }
+          if (latestDbRef.current && incomingLastUpdated > 0 && currentLastUpdated > incomingLastUpdated) {
+            setLoading(false);
+            return;
+          }
 
           setDb(parsed);
           latestDbRef.current = parsed;
@@ -401,6 +435,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDb));
       } catch (e) {
         console.error("Local storage error:", e);
+        // Fallback for localStorage quota limit: save lightweight version without heavy image data
+        try {
+          const lightweightDb = {
+            ...nextDb,
+            teams: nextDb.teams.map(t => ({ ...t, logo: t.logo && t.logo.length > 50000 ? "" : t.logo })),
+            players: nextDb.players.map(p => ({ ...p, photo_url: p.photo_url && p.photo_url.length > 50000 ? "" : p.photo_url }))
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweightDb));
+        } catch {}
       }
       
       if (channelRef.current) {
@@ -1031,22 +1074,77 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     }
   }, [setDbAndSync, addAdminNotification]);
 
+  const databaseSizeBytes = useMemo(() => new Blob([JSON.stringify(db)]).size, [db]);
+
+  const optimizeAllImages = useCallback(async () => {
+    let optimizedCount = 0;
+    const initialSize = new Blob([JSON.stringify(latestDbRef.current)]).size;
+    
+    // Check teams
+    const updatedTeams = await Promise.all(
+      latestDbRef.current.teams.map(async (t) => {
+        if (t.logo && t.logo.startsWith("data:image/") && t.logo.length > 40000) {
+          const compressed = await compressDataUrl(t.logo, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
+          if (compressed.length < t.logo.length) {
+            optimizedCount++;
+            return { ...t, logo: compressed };
+          }
+        }
+        return t;
+      })
+    );
+
+    // Check players
+    const updatedPlayers = await Promise.all(
+      latestDbRef.current.players.map(async (p) => {
+        if (p.photo_url && p.photo_url.startsWith("data:image/") && p.photo_url.length > 40000) {
+          const compressed = await compressDataUrl(p.photo_url, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
+          if (compressed.length < p.photo_url.length) {
+            optimizedCount++;
+            return { ...p, photo_url: compressed };
+          }
+        }
+        return p;
+      })
+    );
+
+    if (optimizedCount > 0) {
+      setDbAndSync(prev => ({
+        ...prev,
+        teams: updatedTeams,
+        players: updatedPlayers
+      }), true);
+    }
+
+    const finalSize = new Blob([JSON.stringify(latestDbRef.current)]).size;
+    const bytesSaved = Math.max(0, initialSize - finalSize);
+    
+    if (optimizedCount > 0) {
+      addAdminNotification(`Optimized ${optimizedCount} photos! Saved ${(bytesSaved / 1024).toFixed(1)} KB.`, "success");
+    } else {
+      addAdminNotification("All photos & logos are already optimized and lightweight!", "info");
+    }
+
+    return { optimizedCount, bytesSaved };
+  }, [setDbAndSync, addAdminNotification]);
+
   const forceSyncToCloud = useCallback(async () => {
     try {
       const docRef = doc(firestoreDb, FIRESTORE_DOC_ID);
-      await setDoc(docRef, latestDbRef.current);
+      const dataToSave = sanitizeData(latestDbRef.current);
+      await setDoc(docRef, dataToSave, { merge: false });
       addAdminNotification("All records successfully pushed and synced to Firestore!", "success");
       return true;
     } catch (err: any) {
       addAdminNotification(`Cloud sync failed: ${err.message}`, "warning");
       return false;
     }
-  }, [addAdminNotification]);
+  }, [sanitizeData, addAdminNotification]);
 
   const transferToNewFirebase = useCallback(async (targetConfig: any) => {
     try {
       const { uploadDataToTargetFirebase } = await import("../lib/firebase");
-      await uploadDataToTargetFirebase(targetConfig, latestDbRef.current);
+      await uploadDataToTargetFirebase(targetConfig, sanitizeData(latestDbRef.current));
       localStorage.setItem("custom_firebase_config", JSON.stringify(targetConfig));
       try {
         sessionStorage.removeItem("firestore_quota_exceeded");
@@ -1061,12 +1159,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       console.error("Transfer error", err);
       return { success: false, error: err.message || String(err) };
     }
-  }, [addAdminNotification]);
+  }, [sanitizeData, addAdminNotification]);
 
   const contextValue = useMemo(() => ({
     db, 
     loading,
     isQuotaExceeded,
+    databaseSizeBytes,
     adminNotifications,
     addAdminNotification,
     updateMatchScore, 
@@ -1093,11 +1192,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     exportDatabaseJSON,
     importDatabaseJSON,
     forceSyncToCloud,
+    optimizeAllImages,
     transferToNewFirebase
   }), [
     db, 
     loading,
     isQuotaExceeded,
+    databaseSizeBytes,
     adminNotifications,
     addAdminNotification,
     updateMatchScore, 
@@ -1124,6 +1225,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     exportDatabaseJSON,
     importDatabaseJSON,
     forceSyncToCloud,
+    optimizeAllImages,
     transferToNewFirebase
   ]);
 

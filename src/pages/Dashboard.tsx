@@ -3,13 +3,14 @@ import { TournamentBracket } from "../components/TournamentBracket";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { Navigate, Link } from "react-router-dom";
-import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server, RotateCcw, Zap, Calendar } from "lucide-react";
+import { Activity, Save, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, Users, UserPlus, Trash2, Edit, BarChart2, Download, Shield, GitMerge, X, ShieldCheck, Menu, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Gamepad2, Flag, UserCog, Database as DatabaseIcon, Cloud, UploadCloud, DownloadCloud, Key, ArrowRight, ExternalLink, HardDrive, Server, RotateCcw, Zap, Calendar, Image as ImageIcon, Sparkles, Check } from "lucide-react";
 import { card, PP, Badge } from "../components/Shared";
 import LiveMatchControlModal from "../components/LiveMatchControlModal";
 import { Match, Player, Team, User, Bracket, BracketMatch, Database } from "../types";
 import { S_STATS, useW } from "../db";
 import { printHtml } from "../utils/print";
 import { firebaseConfig } from "../lib/firebase";
+import { compressImageFile, getImageSizeKb } from "../utils/imageOptimizer";
 
 const InlineDeleteButton = ({ 
   onConfirm, 
@@ -163,7 +164,9 @@ export default function Dashboard() {
     importDatabaseJSON,
     forceSyncToCloud,
     transferToNewFirebase,
-    isQuotaExceeded
+    isQuotaExceeded,
+    databaseSizeBytes,
+    optimizeAllImages
   } = useDatabase();
 
   const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets" | "system" | "database">("matches");
@@ -177,6 +180,11 @@ export default function Dashboard() {
   const [transferError, setTransferError] = useState<string | null>(null);
   const [transferSuccess, setTransferSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Storage Optimization State
+  const [isCompressingLogo, setIsCompressingLogo] = useState(false);
+  const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
+  const [isOptimizingStorage, setIsOptimizingStorage] = useState(false);
 
   // Update sidebar on mobile change
   useEffect(() => {
@@ -356,12 +364,35 @@ export default function Dashboard() {
     showMsg("s", "Team added successfully!");
   };
 
-  const handlePlayerPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTeamLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setNewPlayerPhoto(reader.result as string);
-      reader.readAsDataURL(file);
+      try {
+        setIsCompressingLogo(true);
+        const compressed = await compressImageFile(file, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
+        setNewTeamLogo(compressed);
+        showMsg("s", `Logo optimized & attached (${getImageSizeKb(compressed)} KB)`);
+      } catch (err: any) {
+        showMsg("e", err.message || "Failed to process logo image");
+      } finally {
+        setIsCompressingLogo(false);
+      }
+    }
+  };
+
+  const handlePlayerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setIsCompressingPhoto(true);
+        const compressed = await compressImageFile(file, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
+        setNewPlayerPhoto(compressed);
+        showMsg("s", `Photo optimized & attached (${getImageSizeKb(compressed)} KB)`);
+      } catch (err: any) {
+        showMsg("e", err.message || "Failed to process player photo");
+      } finally {
+        setIsCompressingPhoto(false);
+      }
     }
   };
 
@@ -372,7 +403,15 @@ export default function Dashboard() {
     const team = db.teams.find(t => t.team_id === teamId);
     if (!team) return;
     const jerseyValue = (team.sport === "Taekwondo" || team.sport === "Arnis") ? newPlayerJersey : parseInt(newPlayerJersey);
-    addPlayer({ player_name: newPlayerName, team_id: teamId, sport: team.sport, jersey_number: jerseyValue, gender: newPlayerGender as any, photo_url: newPlayerPhoto || undefined });
+    addPlayer({ 
+      player_name: newPlayerName, 
+      team_id: teamId, 
+      sport: team.sport, 
+      category: newPlayerDivision || team.category || (newPlayerGender === "Female" ? "Women's Division" : "Men's Division"),
+      jersey_number: jerseyValue, 
+      gender: newPlayerGender as any, 
+      photo_url: newPlayerPhoto || undefined 
+    });
     addActivityLog(`${user?.name} added player ${newPlayerName} to team ${team.team_name}`);
     setNewPlayerName(""); setNewPlayerJersey(""); setNewPlayerPhoto("");
     showMsg("s", "Player added successfully!");
@@ -1020,14 +1059,25 @@ export default function Dashboard() {
           </div>
           <div>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Team Logo</label>
-            <input type="file" accept="image/*" onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onloadend = () => setNewTeamLogo(reader.result as string);
-                reader.readAsDataURL(file);
-              }
-            }} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "12px", color: "var(--text-main)" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              {newTeamLogo && (
+                <div style={{ position: "relative" }}>
+                  <img src={newTeamLogo} alt="Team Logo" style={{ width: 56, height: 56, borderRadius: 12, objectFit: "cover", border: "2px solid #38bdf8" }} />
+                  <button type="button" onClick={() => setNewTeamLogo("")} style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleTeamLogoUpload} 
+                  disabled={isCompressingLogo}
+                  style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "12px", color: "var(--text-main)" }} 
+                />
+                {isCompressingLogo && <span style={{ fontSize: 12, color: "#38bdf8", marginTop: 4, display: "block" }}>⚡ Compressing image...</span>}
+                {newTeamLogo && !isCompressingLogo && <span style={{ fontSize: 12, color: "#10b981", marginTop: 4, display: "block" }}>✓ Ready to save ({getImageSizeKb(newTeamLogo)} KB)</span>}
+              </div>
+            </div>
           </div>
           <button type="submit" style={{ background: "#38bdf8", color: "var(--bg)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: "pointer", marginTop: 8, boxShadow: "0 8px 16px rgba(56, 189, 248, 0.3)" }}>+ CREATE TEAM</button>
         </form>
@@ -1071,9 +1121,24 @@ export default function Dashboard() {
           </div>
           <div>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Player Photo</label>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              {newPlayerPhoto && <img src={newPlayerPhoto} alt="Player" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} />}
-              <input type="file" accept="image/*" onChange={handlePlayerPhotoUpload} style={{ background: "var(--panel-bg)", color: "var(--text-main)", fontSize: 14 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              {newPlayerPhoto && (
+                <div style={{ position: "relative" }}>
+                  <img src={newPlayerPhoto} alt="Player" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #10b981" }} />
+                  <button type="button" onClick={() => setNewPlayerPhoto("")} style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handlePlayerPhotoUpload} 
+                  disabled={isCompressingPhoto}
+                  style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "12px", color: "var(--text-main)", fontSize: 14 }} 
+                />
+                {isCompressingPhoto && <span style={{ fontSize: 12, color: "#38bdf8", marginTop: 4, display: "block" }}>⚡ Compressing image...</span>}
+                {newPlayerPhoto && !isCompressingPhoto && <span style={{ fontSize: 12, color: "#10b981", marginTop: 4, display: "block" }}>✓ Ready to save ({getImageSizeKb(newPlayerPhoto)} KB)</span>}
+              </div>
             </div>
           </div>
           <div style={{ position: "relative", zIndex: 10 }}>
@@ -1117,9 +1182,18 @@ export default function Dashboard() {
         <div style={{ maxHeight: 500, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
           {db.players.map(p => (
             <div key={p.player_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel-bg)", padding: 20, borderRadius: 16, border: "1px solid var(--border-color)" }}>
-              <div>
-                <div style={{ fontWeight: 900, fontSize: 18 }}>{p.player_name} <span style={{ color: "#38bdf8", fontSize: 16, marginLeft: 8 }}>#{p.jersey_number}</span></div>
-                <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{teamsMap[p.team_id]?.team_name} • {p.sport} • {teamsMap[p.team_id]?.category || "N/A"}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                {p.photo_url ? (
+                  <img src={p.photo_url} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", border: "1px solid var(--border-color)" }} />
+                ) : (
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
+                    {p.player_name.substring(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: 18 }}>{p.player_name} <span style={{ color: "#38bdf8", fontSize: 16, marginLeft: 8 }}>#{p.jersey_number}</span></div>
+                  <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{teamsMap[p.team_id]?.team_name} • {p.sport} • {p.category || teamsMap[p.team_id]?.category || "N/A"}</div>
+                </div>
               </div>
               <InlineDeleteButton onConfirm={() => deletePlayer(p.player_id)} title="Delete player" label="Delete player?" size={22} />
             </div>
@@ -1507,6 +1581,82 @@ export default function Dashboard() {
               <div style={{ fontSize: 22, fontWeight: 900, color: "#ec4899" }}>{db.referees?.length || 0}</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Referees</div>
             </div>
+          </div>
+        </div>
+
+        {/* Storage & Image Health Diagnostics */}
+        <div style={{ ...card, border: "1px solid rgba(16, 185, 129, 0.3)", background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(16, 185, 129, 0.15)", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ImageIcon size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, display: "flex", alignItems: "center", gap: 8 }}>
+                  Storage Health & Image Diagnostics
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: databaseSizeBytes > 950000 ? "rgba(239,68,68,0.2)" : databaseSizeBytes > 600000 ? "rgba(245,158,11,0.2)" : "rgba(16,185,129,0.2)", color: databaseSizeBytes > 950000 ? "#ef4444" : databaseSizeBytes > 600000 ? "#f59e0b" : "#10b981", fontWeight: 800 }}>
+                    {databaseSizeBytes > 950000 ? "Critical Size" : databaseSizeBytes > 600000 ? "Moderate Size" : "Optimal"}
+                  </span>
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+                  Current Document Size: <strong style={{ color: "var(--text-main)" }}>{(databaseSizeBytes / 1024).toFixed(1)} KB</strong> / 1,024 KB Firestore hard limit ({((databaseSizeBytes / 1048576) * 100).toFixed(1)}% used)
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={isOptimizingStorage}
+              onClick={async () => {
+                setIsOptimizingStorage(true);
+                try {
+                  await optimizeAllImages();
+                } finally {
+                  setIsOptimizingStorage(false);
+                }
+              }}
+              style={{
+                background: "rgba(16, 185, 129, 0.15)",
+                color: "#10b981",
+                border: "1px solid rgba(16, 185, 129, 0.4)",
+                padding: "10px 16px",
+                borderRadius: 10,
+                fontWeight: 800,
+                fontSize: 13,
+                cursor: isOptimizingStorage ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                opacity: isOptimizingStorage ? 0.7 : 1
+              }}
+            >
+              {isOptimizingStorage ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" /> Optimizing photos...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} /> Optimize All Saved Photos
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ width: "100%", height: 8, background: "var(--border-color)", borderRadius: 4, overflow: "hidden", marginTop: 16 }}>
+            <div 
+              style={{ 
+                width: `${Math.min(100, Math.max(3, (databaseSizeBytes / 1048576) * 100))}%`, 
+                height: "100%", 
+                background: databaseSizeBytes > 950000 ? "#ef4444" : databaseSizeBytes > 600000 ? "#f59e0b" : "#10b981",
+                borderRadius: 4,
+                transition: "width 0.3s ease"
+              }} 
+            />
+          </div>
+
+          <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, background: "rgba(0,0,0,0.15)", padding: "10px 14px", borderRadius: 8 }}>
+            ℹ️ <strong>Why photos failed previously:</strong> High-resolution photos from phones are typically 3MB–10MB. Google Cloud Firestore rejects single documents larger than 1,024 KB. All newly uploaded photos and logos are now automatically compressed to crisp, lightweight ~15KB thumbnails before saving.
           </div>
         </div>
 

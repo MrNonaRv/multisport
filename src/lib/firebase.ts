@@ -61,8 +61,12 @@ export async function uploadDataToTargetFirebase(targetConfig: any, data: any): 
     ? getFs(targetApp)
     : getFs(targetApp, targetDbId);
 
-  const documentRef = docRef(targetDb, "data", "sports_db");
+  const documentRef = docRef(targetDb, "data", "sports_db_v2");
   await setDocRef(documentRef, data);
+  // Also write to legacy path for backward compatibility
+  try {
+    await setDocRef(docRef(targetDb, "data", "sports_db"), data);
+  } catch {}
   return true;
 }
 
