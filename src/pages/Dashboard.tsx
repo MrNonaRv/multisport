@@ -1534,7 +1534,7 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
-                  Project ID: <strong style={{ color: "#38bdf8" }}>{firebaseConfig.projectId}</strong> • Stored at <code style={{ background: "var(--border-color)", padding: "2px 6px", borderRadius: 4 }}>data/sports_db</code>
+                  Project ID: <strong style={{ color: "#38bdf8" }}>{firebaseConfig.projectId}</strong> • Stored at <code style={{ background: "var(--border-color)", padding: "2px 6px", borderRadius: 4 }}>data/sports_db_v2</code>
                 </div>
               </div>
             </div>

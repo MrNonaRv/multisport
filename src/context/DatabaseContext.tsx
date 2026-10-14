@@ -371,20 +371,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             sf: b.sf || Array(2).fill(null).map(() => ({ team1: "", team2: "", score1: 0, score2: 0, winner: "" })),
           }));
 
-          const currentLastUpdated = latestDbRef.current?.lastUpdated || 0;
-          const incomingLastUpdated = parsed.lastUpdated || 0;
-
-          // Prevent race condition: do not overwrite local unconfirmed edits if write is in progress
-          // or if local state has newer timestamp than incoming snapshot
-          if (latestDbRef.current && (isWritingRef.current || pendingWriteRef.current)) {
-            setLoading(false);
-            return;
-          }
-          if (latestDbRef.current && incomingLastUpdated > 0 && currentLastUpdated > incomingLastUpdated) {
+          // If this device is actively flushing or has pending un-flushed writes in queue,
+          // don't overwrite until local write completes
+          if (latestDbRef.current && (isWritingRef.current || pendingWriteRef.current || syncTimerRef.current)) {
             setLoading(false);
             return;
           }
 
+          // Authoritative cloud update received from Firestore: update state and local cache immediately
           setDb(parsed);
           latestDbRef.current = parsed;
           try {
@@ -723,15 +717,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         ...prev,
         teams: [...prev.teams, { ...team, team_id: newId }]
       };
-    });
-  }, []);
+    }, true);
+  }, [setDbAndSync]);
 
   const updateTeam = useCallback((teamId: number, team: Partial<Team>) => {
     setDbAndSync(prev => ({
       ...prev,
       teams: prev.teams.map(t => Number(t.team_id) === Number(teamId) ? { ...t, ...team } : t)
-    }));
-  }, []);
+    }), true);
+  }, [setDbAndSync]);
 
   const deleteTeam = useCallback((teamId: number) => {
     const numId = Number(teamId);
@@ -756,15 +750,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         ...prev,
         players: [...prev.players, { ...player, player_id: newId }]
       };
-    });
-  }, []);
+    }, true);
+  }, [setDbAndSync]);
 
   const updatePlayer = useCallback((playerId: number, player: Partial<Player>) => {
     setDbAndSync(prev => ({
       ...prev,
       players: prev.players.map(p => Number(p.player_id) === Number(playerId) ? { ...p, ...player } : p)
-    }));
-  }, []);
+    }), true);
+  }, [setDbAndSync]);
 
   const deletePlayer = useCallback((playerId: number) => {
     const numId = Number(playerId);
