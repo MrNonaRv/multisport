@@ -11,6 +11,8 @@ import { S_STATS, useW } from "../db";
 import { printHtml } from "../utils/print";
 import { firebaseConfig } from "../lib/firebase";
 import { compressImageFile, getImageSizeKb } from "../utils/imageOptimizer";
+import { supabase } from '../lib/supabase';
+import { MigrateImages } from '../components/MigrateImages';
 
 const InlineDeleteButton = ({ 
   onConfirm, 
@@ -366,7 +368,23 @@ export default function Dashboard() {
 
   const handleTeamLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && supabase) {
+      try {
+        setIsCompressingLogo(true);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('athlete-images').upload(fileName, file);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('athlete-images').getPublicUrl(fileName);
+        setNewTeamLogo(publicUrl);
+        showMsg("s", `Logo uploaded successfully!`);
+      } catch (err: any) {
+        showMsg("e", err.message || "Failed to upload logo image");
+      } finally {
+        setIsCompressingLogo(false);
+      }
+    } else if (file) {
+      // Fallback/Legacy logic
       try {
         setIsCompressingLogo(true);
         const compressed = await compressImageFile(file, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
@@ -382,7 +400,23 @@ export default function Dashboard() {
 
   const handlePlayerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && supabase) {
+      try {
+        setIsCompressingPhoto(true);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('athlete-images').upload(fileName, file);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('athlete-images').getPublicUrl(fileName);
+        setNewPlayerPhoto(publicUrl);
+        showMsg("s", `Photo uploaded successfully!`);
+      } catch (err: any) {
+        showMsg("e", err.message || "Failed to upload player photo");
+      } finally {
+        setIsCompressingPhoto(false);
+      }
+    } else if (file) {
+      // Fallback/Legacy logic
       try {
         setIsCompressingPhoto(true);
         const compressed = await compressImageFile(file, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
@@ -1658,6 +1692,7 @@ export default function Dashboard() {
           <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, background: "rgba(0,0,0,0.15)", padding: "10px 14px", borderRadius: 8 }}>
             ℹ️ <strong>Why photos failed previously:</strong> High-resolution photos from phones are typically 3MB–10MB. Google Cloud Firestore rejects single documents larger than 1,024 KB. All newly uploaded photos and logos are now automatically compressed to crisp, lightweight ~15KB thumbnails before saving.
           </div>
+          <MigrateImages />
         </div>
 
         {/* Transfer to Your Firebase Account */}
