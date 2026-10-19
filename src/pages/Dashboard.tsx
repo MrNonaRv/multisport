@@ -11,7 +11,7 @@ import { S_STATS, useW } from "../db";
 import { printHtml } from "../utils/print";
 import { firebaseConfig } from "../lib/firebase";
 import { compressImageFile, getImageSizeKb } from "../utils/imageOptimizer";
-import { supabase } from '../lib/supabase';
+import { supabase, testSupabaseConnection } from '../lib/supabase';
 import { MigrateImages } from '../components/MigrateImages';
 
 const InlineDeleteButton = ({ 
@@ -1581,6 +1581,20 @@ export default function Dashboard() {
                 style={{ background: "rgba(6, 182, 212, 0.15)", color: "#06b6d4", border: "1px solid rgba(6, 182, 212, 0.4)", padding: "10px 18px", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
               >
                 <RefreshCw size={16} /> Force Cloud Push
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const result = await testSupabaseConnection();
+                  if (result.success) {
+                    showMsg("s", "Supabase connected successfully!");
+                  } else {
+                    showMsg("e", `Supabase connection failed: ${result.error}`);
+                  }
+                }}
+                style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.4)", padding: "10px 18px", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+              >
+                Test Supabase Connection
               </button>
               {isCustom && (
                 <button
