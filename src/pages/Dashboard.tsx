@@ -1208,7 +1208,7 @@ export default function Dashboard() {
                </>
             )}
           </div>
-          <button type="submit" style={{ background: "#10b981", color: "var(--text-main)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: "pointer", marginTop: 8, boxShadow: "0 8px 16px rgba(16, 185, 129, 0.3)" }}>+ ADD PLAYER</button>
+          <button type="submit" disabled={isCompressingPhoto} style={{ background: "#10b981", color: "var(--text-main)", border: "none", padding: "16px", borderRadius: 12, fontWeight: 900, fontSize: 18, cursor: isCompressingPhoto ? "not-allowed" : "pointer", marginTop: 8, boxShadow: "0 8px 16px rgba(16, 185, 129, 0.3)", opacity: isCompressingPhoto ? 0.7 : 1 }}>{isCompressingPhoto ? 'Uploading...' : '+ ADD PLAYER'}</button>
         </form>
       </div>
       <div style={{ ...card, padding: 32 }}>
