@@ -430,7 +430,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleAddPlayer = (e: React.FormEvent) => {
+  const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlayerName.trim() || !newPlayerTeam || !newPlayerJersey) return showMsg("e", "Please fill in all player fields.");
     const teamId = parseInt(newPlayerTeam);
@@ -447,8 +447,9 @@ export default function Dashboard() {
       photo_url: newPlayerPhoto || undefined 
     });
     addActivityLog(`${user?.name} added player ${newPlayerName} to team ${team.team_name}`);
+    await forceSyncToCloud();
     setNewPlayerName(""); setNewPlayerJersey(""); setNewPlayerPhoto("");
-    showMsg("s", "Player added successfully!");
+    showMsg("s", "Player added and synced successfully!");
   };
 
   const handleAddUser = (e: React.FormEvent) => {
