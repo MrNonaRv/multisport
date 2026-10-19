@@ -247,9 +247,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Sanitize data to remove undefined values before saving to Firestore
+  // Sanitize data to remove undefined values and large base64 strings before saving to Firestore
   const sanitizeData = (data: any): any => {
     if (data === undefined) return null;
+    
+    // If it's a string and looks like a base64 image (starts with data:image/)
+    if (typeof data === 'string' && data.startsWith('data:image/') && data.length > 1000) {
+      console.warn("Pruning large base64 string from Firestore document");
+      return null;
+    }
+
     if (Array.isArray(data)) return data.map(sanitizeData);
     if (typeof data === 'object' && data !== null) {
       const sanitized: any = {};
