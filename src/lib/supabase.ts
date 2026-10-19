@@ -1,17 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseUrl = (!rawUrl || rawUrl.includes('YOUR_SUPABASE_PROJECT_URL')) 
-  ? 'https://fcgzargsezyykdrqcrrn.supabase.co' 
-  : rawUrl;
+function getStoredSupabaseConfig() {
+  try {
+    const customUrl = localStorage.getItem('custom_supabase_url');
+    const customKey = localStorage.getItem('custom_supabase_anon_key');
+    if (customUrl && customKey) {
+      return { url: customUrl, key: customKey };
+    }
+  } catch {}
 
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseUrl = (!rawUrl || rawUrl.includes('YOUR_SUPABASE_PROJECT_URL')) 
+    ? 'https://fcgzargsezyykdrqcrrn.supabase.co' 
+    : rawUrl;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials missing. Image storage will be disabled.');
+  const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseAnonKey = (!rawKey || rawKey.includes('YOUR_SUPABASE_ANON_KEY'))
+    ? 'sb_publishable_oaT0DWnQUHfO83OrfTLDrg_W-M0yuXm'
+    : rawKey;
+  
+  return { url: supabaseUrl, key: supabaseAnonKey };
 }
 
-export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const config = getStoredSupabaseConfig();
+export const supabase = config.url && config.key ? createClient(config.url, config.key) : null;
 
 export async function testSupabaseConnection() {
   if (!supabase) return { success: false, error: 'Supabase client not initialized' };

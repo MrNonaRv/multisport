@@ -188,6 +188,10 @@ export default function Dashboard() {
   const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
   const [isOptimizingStorage, setIsOptimizingStorage] = useState(false);
 
+  // Supabase Direct Config State
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(() => localStorage.getItem('custom_supabase_url') || 'https://fcgzargsezyykdrqcrrn.supabase.co');
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(() => localStorage.getItem('custom_supabase_anon_key') || '');
+
   // Update sidebar on mobile change
   useEffect(() => {
     if (mob) setIsSidebarOpen(false);
@@ -1629,6 +1633,64 @@ export default function Dashboard() {
             <div style={{ background: "var(--bg)", padding: "12px 16px", borderRadius: 10, textAlign: "center" }}>
               <div style={{ fontSize: 22, fontWeight: 900, color: "#ec4899" }}>{db.referees?.length || 0}</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>Referees</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Supabase Direct Configuration Card */}
+        <div style={{ ...card, border: "1px solid #38bdf840", background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)" }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 900, color: "#38bdf8" }}>Supabase Storage Direct Configuration</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>
+            Paste your Supabase Project URL and Publishable/Anon Key below to securely connect storage instantly.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 4 }}>Supabase Project URL</label>
+              <input 
+                type="text" 
+                value={supabaseUrlInput}
+                onChange={e => setSupabaseUrlInput(e.target.value)}
+                placeholder="https://your-project.supabase.co"
+                style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px", color: "var(--text-main)", fontSize: 14 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 4 }}>Supabase Anon / Publishable Key</label>
+              <input 
+                type="password" 
+                value={supabaseKeyInput}
+                onChange={e => setSupabaseKeyInput(e.target.value)}
+                placeholder="sb_publishable_..."
+                style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px", color: "var(--text-main)", fontSize: 14 }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 12, marginTop: 4, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('custom_supabase_url', supabaseUrlInput.trim());
+                  localStorage.setItem('custom_supabase_anon_key', supabaseKeyInput.trim());
+                  showMsg("s", "Supabase credentials saved! Reloading...");
+                  setTimeout(() => window.location.reload(), 1000);
+                }}
+                style={{ background: "#38bdf8", color: "#0f172a", border: "none", padding: "10px 20px", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+              >
+                Save & Connect Supabase
+              </button>
+              {localStorage.getItem('custom_supabase_url') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('custom_supabase_url');
+                    localStorage.removeItem('custom_supabase_anon_key');
+                    showMsg("s", "Cleared custom Supabase config! Reloading...");
+                    setTimeout(() => window.location.reload(), 1000);
+                  }}
+                  style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "10px 20px", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+                >
+                  Reset to Default
+                </button>
+              )}
             </div>
           </div>
         </div>
