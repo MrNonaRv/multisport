@@ -193,7 +193,7 @@ export function initDB() {
 
   const users = [
     {user_id:1,name:"Admin User",email:"admin@sportsmetrics.com",password:"admin123",role:"ADMIN"},
-    {user_id:2,name:"Tab Reyes",email:"tab@sportsmetrics.com",password:"tab123",role:"TABULATOR"},
+    {user_id:2,name:"Tab Reyes",email:"tab@sportsmetrics.com",password:"tab123",role:"TABULATOR", assignedSport: "Basketball"},
   ];
   
   const brackets = SPORTS.map(sport => {

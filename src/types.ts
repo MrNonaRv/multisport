@@ -87,6 +87,7 @@ export interface User {
   email: string;
   password?: string;
   role: "ADMIN" | "TABULATOR";
+  assignedSport?: string;
 }
 
 export interface BracketMatch {

@@ -144,7 +144,6 @@ const DashboardMatchCard = React.memo(({
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { 
-    db, 
     addMatch,
     updateMatchScore, 
     updateMatchStatus, 
@@ -168,7 +167,8 @@ export default function Dashboard() {
     transferToNewFirebase,
     isQuotaExceeded,
     databaseSizeBytes,
-    optimizeAllImages
+    optimizeAllImages,
+    db: rawDb
   } = useDatabase();
 
   const [activeTab, setActiveTab] = useState<"matches" | "teams" | "players" | "users" | "activity" | "brackets" | "system" | "database">("matches");
@@ -199,8 +199,25 @@ export default function Dashboard() {
 
   const [msg, setMsg] = useState<{ t: "s" | "e", m: string } | null>(null);
 
-  // Match State
   const [matchSportFilter, setMatchSportFilter] = useState("");
+
+  const allowedSport = user?.role === "ADMIN" ? null : user?.assignedSport;
+
+  const filteredDb = useMemo(() => {
+    if (!allowedSport) return rawDb;
+    return {
+      ...rawDb,
+      teams: rawDb.teams.filter(t => t.sport === allowedSport),
+      players: rawDb.players.filter(p => p.sport === allowedSport),
+      matches: rawDb.matches.filter(m => m.sport === allowedSport),
+      brackets: rawDb.brackets.filter(b => b.sport === allowedSport),
+      referees: rawDb.referees?.filter(r => r.sport === allowedSport) || [],
+      sports: [allowedSport]
+    };
+  }, [rawDb, allowedSport]);
+
+  const db = filteredDb;
+
   useEffect(() => { if(!matchSportFilter && db.sports.length) setMatchSportFilter(db.sports[0]); }, [db.sports, matchSportFilter]);
 
   const [boxScoreMatch, setBoxScoreMatch] = useState<number | null>(null);
@@ -227,6 +244,7 @@ export default function Dashboard() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<"ADMIN" | "TABULATOR">("TABULATOR");
+  const [newUserSport, setNewUserSport] = useState(db.sports[0] || "");
 
   // System State
   const [newSportName, setNewSportName] = useState("");
@@ -459,8 +477,14 @@ export default function Dashboard() {
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return showMsg("e", "Please fill in all user fields.");
-    addUser({ name: newUserName, email: newUserEmail, password: newUserPassword, role: newUserRole });
-    addActivityLog(`${user?.name} created a new ${newUserRole} user: ${newUserName}`);
+    addUser({ 
+      name: newUserName, 
+      email: newUserEmail, 
+      password: newUserPassword, 
+      role: newUserRole,
+      assignedSport: newUserRole === "TABULATOR" ? newUserSport : undefined
+    });
+    addActivityLog(`${user?.name} created a new ${newUserRole} user: ${newUserName} ${newUserRole === "TABULATOR" ? `for ${newUserSport}` : ""}`);
     setNewUserName(""); setNewUserEmail(""); setNewUserPassword("");
     showMsg("s", "User added successfully!");
   };
@@ -910,9 +934,9 @@ export default function Dashboard() {
             <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Manage Matches</h2>
             
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {db.sports.map(s => (
+              {db.sports.map((s, i) => (
                 <button
-                  key={s}
+                  key={s + i}
                   onClick={() => setMatchSportFilter(s)}
                   style={{
                     padding: "8px 16px",
@@ -1080,7 +1104,7 @@ export default function Dashboard() {
           <div>
             <label style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 8 }}>Sport</label>
             <select value={newTeamSport} onChange={e => setNewTeamSport(e.target.value)} style={{ width: "100%", background: "var(--panel-bg)", border: "2px solid var(--border-color)", borderRadius: 12, padding: "16px", color: "var(--text-main)", fontSize: 18, fontWeight: 700 }}>
-              {db.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
+              {db.sports.map((s, i) => <option key={s + i} value={s} style={{ color: "#000" }}>{s}</option>)}
             </select>
           </div>
           <div style={{ position: "relative", zIndex: 10 }}>
@@ -1272,9 +1296,9 @@ export default function Dashboard() {
               <option value="Women's Division">Women's Division</option>
               <option value="Mixed Division">Mixed Division</option>
             </select>
-            {db.sports.map(s => (
+            {db.sports.map((s, i) => (
               <button
-                key={s}
+                key={s + i}
                 onClick={() => setBracketSport(s)}
                 style={{
                   padding: "8px 16px",
@@ -1399,6 +1423,11 @@ export default function Dashboard() {
             <option value="TABULATOR">Tabulator</option>
             <option value="ADMIN">Admin</option>
           </select>
+          {newUserRole === "TABULATOR" && (
+            <select value={newUserSport} onChange={e => setNewUserSport(e.target.value)} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }}>
+              {db.sports.map((s, i) => <option key={s + i} value={s}>{s}</option>)}
+            </select>
+          )}
           <button type="submit" style={{ background: "#f59e0b", color: "var(--bg)", border: "none", padding: "12px", borderRadius: 8, fontWeight: 800, cursor: "pointer" }}>Create User</button>
         </form>
       </div>
@@ -1410,6 +1439,7 @@ export default function Dashboard() {
               <div>
                 <div style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
                   {u.name} <span style={Badge(u.role === "ADMIN" ? "#f59e0b" : "#38bdf8")}>{u.role}</span>
+                  {u.assignedSport && <span style={Badge("#64748b")}>{u.assignedSport}</span>}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{u.email}</div>
               </div>
@@ -1435,8 +1465,8 @@ export default function Dashboard() {
       <div style={card}>
         <h2 style={{ margin: "0 0 24px", fontSize: 20, fontWeight: 800, display: "flex", alignItems: "center", gap: 12 }}>🕹️ System Sports List</h2>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {db.sports.map(s => (
-            <span key={s} style={{ background: "var(--panel-bg)", border: "1px solid var(--border-color)", padding: "4px 12px", borderRadius: 16, fontSize: 13 }}>{s}</span>
+          {db.sports.map((s, i) => (
+            <span key={s + i} style={{ background: "var(--panel-bg)", border: "1px solid var(--border-color)", padding: "4px 12px", borderRadius: 16, fontSize: 13 }}>{s}</span>
           ))}
         </div>
       </div>
