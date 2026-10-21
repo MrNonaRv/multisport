@@ -90,14 +90,14 @@ export default function Home() {
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 16, marginBottom: 32 }}>
-        {db.sports?.map(s => {
+        {db.sports?.map((s, i) => {
           const c = COLORS[s as keyof typeof COLORS] || "#3b82f6";
           const ic = S_ICONS[s as keyof typeof S_ICONS] || "🏅";
           const tCount = db.teams.filter(t => t.sport === s).length;
           const pCount = db.players.filter(p => p.sport === s).length;
           
           return (
-            <Link key={s} to={`/sport/${s.toLowerCase().split(" ").join("-")}`} style={{ textDecoration: "none" }}>
+            <Link key={s + i} to={`/sport/${s.toLowerCase().split(" ").join("-")}`} style={{ textDecoration: "none" }}>
               <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, transition: "transform 0.2s, border-color 0.2s", cursor: "pointer", border: "1px solid var(--border-color)" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = c; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "var(--border-color)"; }}>

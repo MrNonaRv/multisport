@@ -449,9 +449,9 @@ function Layout({ children }: { children: React.ReactNode }) {
                   
                   {showSports && (
                     <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 12, background: "var(--panel-bg)", border: "1px solid var(--border-color)", borderRadius: 12, padding: "8px 0", minWidth: 200, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", zIndex: 1000 }}>
-                      {db.sports?.map(s => (
+                      {db.sports?.map((s, i) => (
                         <Link 
-                          key={s} 
+                          key={s + i} 
                           to={`/sport/${s.toLowerCase().split(" ").join("-")}`}
                           className="dropdown-item"
                           onClick={() => setShowSports(false)}
@@ -523,9 +523,9 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 20 }}>
                   <div style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Sports</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
-                    {db.sports?.map(s => (
+                    {db.sports?.map((s, i) => (
                       <Link 
-                        key={s} 
+                        key={s + i} 
                         to={`/sport/${s.toLowerCase().split(" ").join("-")}`} 
                         onClick={() => setMenu(false)} 
                         style={{ color: loc.pathname.includes(s.toLowerCase().split(" ").join("-")) ? "#38bdf8" : "var(--text-main)", textDecoration: "none", fontSize: 14, fontWeight: 700, padding: "12px", background: "var(--panel-bg)", borderRadius: 8 }}

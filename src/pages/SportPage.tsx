@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Trophy, ArrowRight, Activity, Trash2 } from "lucide-react";
 import { useW, SPORT_THEMES, S_STATS } from "../db";
 import { useDatabase } from "../context/DatabaseContext";
@@ -395,6 +395,16 @@ export default function SportPage() {
   const [publicBoxScoreMatch, setPublicBoxScoreMatch] = useState<number | null>(null);
 
   const loc = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.role === "TABULATOR" && user?.assignedSport) {
+      const assignedSlug = user.assignedSport.toLowerCase().split(' ').join('-');
+      if (sportName && sportName.toLowerCase() !== assignedSlug) {
+        navigate(`/sport/${assignedSlug}`, { replace: true });
+      }
+    }
+  }, [user, sportName, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(loc.search);

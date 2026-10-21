@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
 import { LogIn, Mail, Lock, AlertCircle } from "lucide-react";
 import { card, PP } from "../components/Shared";
 
@@ -9,12 +10,18 @@ export default function Login() {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const { login } = useAuth();
+  const { db } = useDatabase();
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, pass)) {
-      navigate("/dashboard");
+    const loggedInUser = db.users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === pass);
+    if (login(email, pass) && loggedInUser) {
+      if (loggedInUser.role === "TABULATOR" && loggedInUser.assignedSport) {
+        navigate(`/sport/${loggedInUser.assignedSport.toLowerCase().split(' ').join('-')}`);
+      } else {
+        navigate("/dashboard");
+      }
     } else {
       setErr("Invalid email or password. Please try again.");
     }

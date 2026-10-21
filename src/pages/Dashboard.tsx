@@ -908,7 +908,7 @@ export default function Dashboard() {
             
             {isSidebarOpen && (
                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                 <Link to="/" style={{ flex: 1, textDecoration: "none" }}>
+                 <Link to={user?.role === "TABULATOR" && user?.assignedSport ? `/sport/${user.assignedSport.toLowerCase().split(' ').join('-')}` : "/"} style={{ flex: 1, textDecoration: "none" }}>
                    <button style={{ width: "100%", background: "var(--border-color)", color: "var(--text-main)", border: "none", padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                       <LayoutDashboard size={14} /> View Site
                    </button>
@@ -2332,7 +2332,7 @@ const getStat = (playerId: number, statKey: string) => {
           </div>
           {!isSidebarOpen && !mob && (
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <Link to="/" style={{ textDecoration: "none" }}>
+              <Link to={user?.role === "TABULATOR" && user?.assignedSport ? `/sport/${user.assignedSport.toLowerCase().split(' ').join('-')}` : "/"} style={{ textDecoration: "none" }}>
                 <button style={{ background: "var(--border-color)", color: "var(--text-main)", border: "1px solid var(--border-hover)", padding: "10px 20px", borderRadius: 20, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>View Site</button>
               </Link>
             </div>
