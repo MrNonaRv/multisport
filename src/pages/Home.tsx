@@ -186,8 +186,8 @@ export default function Home() {
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, display: "flex", alignItems: "center", gap: 10 }}><Trophy size={22} color="#f59e0b" /> Tournament Brackets</h3>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))", gap: 16 }}>
-          {db.brackets?.map(b => (
-            <div key={b.sport} style={{ background: "var(--bg)", borderRadius: 12, padding: 16, border: "1px solid var(--border-color)" }}>
+          {db.brackets?.map((b, i) => (
+            <div key={`${b.sport}-${b.category || i}`} style={{ background: "var(--bg)", borderRadius: 12, padding: 16, border: "1px solid var(--border-color)" }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>{b.sport}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
