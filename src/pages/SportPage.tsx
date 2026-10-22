@@ -1375,57 +1375,32 @@ const getStat = (playerId: number, statKey: string) => {
                       onClick={() => {
                         let tableHtml = "";
                         [ { t: t1, p: t1Players }, { t: t2, p: t2Players } ].forEach(({ t, p }) => {
+                          const playerRows = p.map(player => {
+                            const statsCells = sportStats.map(st => {
+                              const val = getStat(player.player_id, st);
+                              return `<td style="padding: 10px; text-align: center; font-weight: 700;">${val}</td>`;
+                            }).join('');
+
+                            return `
+                              <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 10px; font-weight: 600;">${player.player_name} <span style="color: #64748b; font-size: 11px;">(#${player.jersey_number})</span></td>
+                                ${statsCells}
+                              </tr>
+                            `;
+                          }).join('');
+
                           tableHtml += `
-                            <h4 style="margin: 30px 0 10px; font-size: 18px; color: #0f172a; text-transform: uppercase;">${t?.team_name}</h4>
-                            <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 20px;">
+                            <h4 style="margin: 30px 0 10px; font-size: 16px; color: #0f172a; text-transform: uppercase;">${t?.team_name || 'Team'} Box Score</h4>
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: sans-serif; font-size: 13px; margin-bottom: 20px;">
                               <thead>
-                                <tr style="border-bottom: 2px solid #e2e8f0;">
-                                  <th style="padding: 10px; color: #64748b; font-size: 12px; text-transform: uppercase;">Player</th>
-                                  ${sportStats.map(st => `<th style="padding: 10px; color: #64748b; font-size: 12px; text-transform: uppercase; text-align: center;">${st.replace("_", " ")}</th>`).join('')}
+                                <tr style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 11px;">
+                                  <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Player</th>
+                                  ${sportStats.map(st => `<th style="padding: 8px; border-bottom: 2px solid #e2e8f0; text-align: center;">${st.replace("_", " ")}</th>`).join('')}
                                 </tr>
                               </thead>
                               <tbody>
-                            {(() => {
-                              const finalMatches = mtc.filter(m => 
-                                m.status === "completed" && 
-                                ((teamsMap[m.team1_id]?.team_name === bracket.final.team1 && teamsMap[m.team2_id]?.team_name === bracket.final.team2) || 
-                                 (teamsMap[m.team1_id]?.team_name === bracket.final.team2 && teamsMap[m.team2_id]?.team_name === bracket.final.team1))
-                              ).sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
-
-                              if (finalMatches.length === 0) {
-                                return (
-                                  <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)" }}>No final games played yet.</td></tr>
-                                );
-                              }
-
-                              return finalMatches.map((m, i) => {
-                                const t1 = teamsMap[m.team1_id];
-                                const t2 = teamsMap[m.team2_id];
-                                const isT1Winner = m.winner === t1.team_name;
-                                const winnerName = isT1Winner ? t1.team_name : (m.winner === t2.team_name ? t2.team_name : "Draw");
-                                const loserName = isT1Winner ? t2.team_name : (m.winner === t2.team_name ? t1.team_name : "Draw");
-                                
-                                let scoreA = 0;
-                                let scoreB = 0;
-                                if (m.sport !== "Basketball") {
-                                  scoreA = isT1Winner ? (m.t1_rounds || m.score_team1) : (m.t2_rounds || m.score_team2);
-                                  scoreB = isT1Winner ? (m.t2_rounds || m.score_team2) : (m.t1_rounds || m.score_team1);
-                                } else {
-                                  scoreA = isT1Winner ? m.score_team1 : m.score_team2;
-                                  scoreB = isT1Winner ? m.score_team2 : m.score_team1;
-                                }
-
-                                return (
-                                  <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                                    <td style={{ padding: 16, fontSize: 14, color: "var(--text-muted)" }}>Game {i + 1}</td>
-                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#10b981" }}>{winnerName}</td>
-                                    <td style={{ padding: 16, fontSize: 14 }}>{scoreA} - {scoreB}</td>
-                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#ef4444" }}>{loserName}</td>
-                                  </tr>
-                                );
-                              });
-                            })()}
-                          </tbody>
+                                ${playerRows || '<tr><td colspan="10" style="padding: 10px; text-align: center; color: #64748b;">No players found</td></tr>'}
+                              </tbody>
                             </table>
                           `;
                         });
