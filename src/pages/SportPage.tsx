@@ -497,7 +497,7 @@ export default function SportPage() {
       const { won, lost } = statsMap[t.team_id] || { won: 0, lost: 0 };
       const total = won + lost;
       const pct = total > 0 ? (won / total * 100) : 0;
-      return { ...t, won, lost, total, pct, gold: 0, silver: 0, bronze: 0 };
+      return { ...t, won, lost, total, pct };
     }).sort((a, b) => b.pct - a.pct || b.won - a.won);
   }, [tms, mtc, teamsMap]);
 
@@ -519,7 +519,7 @@ export default function SportPage() {
     { id: "matches", lbl: "MATCHES" },
     { id: "teams", lbl: "TEAMS" },
     { id: "leaderboards", lbl: "LEADERBOARDS" },
-    { id: "standings", lbl: "STANDINGS" },
+    { id: "standings", lbl: "RANKINGS" },
     { id: "finals", lbl: "GAME FINALS" },
   ];
 
@@ -956,7 +956,7 @@ ${allPlayersHtml}
           {/* STANDINGS SECTION */}
           {sec === "standings" && (
             <div>
-              <h2 style={{ textAlign: "center", fontSize: mob ? 28 : 36, fontWeight: 900, marginBottom: 30, letterSpacing: -1 }}>STANDINGS</h2>
+              <h2 style={{ textAlign: "center", fontSize: mob ? 28 : 36, fontWeight: 900, marginBottom: 30, letterSpacing: -1 }}>RANKINGS</h2>
               <div style={{ background: "var(--panel-bg)", backdropFilter: "blur(15px)", borderRadius: 16, overflow: "hidden", boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "1px solid var(--border-color)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}>
                   <thead>
@@ -967,9 +967,6 @@ ${allPlayersHtml}
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>W</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>L</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>Win %</th>
-                      <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>G</th>
-                      <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>S</th>
-                      <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>B</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -982,9 +979,6 @@ ${allPlayersHtml}
                           <td style={{ padding: 16, fontSize: 16, color: "#10b981", fontWeight: 900 }}>{t.won}</td>
                           <td style={{ padding: 16, fontSize: 16, color: "#ef4444", fontWeight: 900 }}>{t.lost}</td>
                           <td style={{ padding: 16, fontSize: 16, fontWeight: 900 }}>{t.pct.toFixed(1)}%</td>
-                          <td style={{ padding: 16, fontSize: 16, fontWeight: 900, color: "#d4af37" }}>{t.gold}</td>
-                          <td style={{ padding: 16, fontSize: 16, fontWeight: 900, color: "#a5a5a5" }}>{t.silver}</td>
-                          <td style={{ padding: 16, fontSize: 16, fontWeight: 900, color: "#cd7f32" }}>{t.bronze}</td>
                         </tr>
                       );
                     })}
