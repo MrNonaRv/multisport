@@ -33,9 +33,9 @@ export default function Archives() {
         >
           All
         </button>
-        {db.sports.map(s => (
+        {db.sports.map((s, i) => (
           <button 
-            key={s}
+            key={s + i}
             onClick={() => setSportFilter(s)}
             style={{ background: sportFilter === s ? "#38bdf8" : "var(--panel-bg)", color: sportFilter === s ? "#000" : "var(--text-main)", border: `1px solid ${sportFilter === s ? "#38bdf8" : "var(--border-color)"}`, padding: "8px 16px", borderRadius: 20, cursor: "pointer", fontWeight: 800 }}
           >

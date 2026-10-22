@@ -843,58 +843,31 @@ export default function SportPage() {
                     onClick={() => {
 
                       const sortedPlayersForReport = [...aggregatedStats].sort((a, b) => ((b as any)[topPerformer.primaryStat] || 0) - ((a as any)[topPerformer.primaryStat] || 0));
+                      const statsList = S_STATS[sport as keyof typeof S_STATS] || [];
                       const allPlayersHtml = `
                         <h3 style="font-size: 16px; font-weight: 800; text-transform: uppercase; color: #0f172a; margin-top: 30px; margin-bottom: 20px;">All Players Ranking</h3>
-                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: sans-serif;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: sans-serif; font-size: 13px;">
                           <thead>
-                            <tr style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 12px;">
-                              <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Rank</th>
+                            <tr style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 11px;">
+                              <th style="padding: 8px; border-bottom: 2px solid #e2e8f0; text-align: center;">Rank</th>
                               <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Player</th>
                               <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Team</th>
-                              ${S_STATS[sport as keyof typeof S_STATS]?.map(st => `<th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">${st.replace("_", " ")}</th>`).join('')}
+                              ${statsList.map(st => `<th style="padding: 8px; border-bottom: 2px solid #e2e8f0; text-align: center;">${st.replace("_", " ")}</th>`).join('')}
                             </tr>
                           </thead>
                           <tbody>
-                            {(() => {
-                              const finalMatches = mtc.filter(m => 
-                                m.status === "completed" && 
-                                ((teamsMap[m.team1_id]?.team_name === bracket.final.team1 && teamsMap[m.team2_id]?.team_name === bracket.final.team2) || 
-                                 (teamsMap[m.team1_id]?.team_name === bracket.final.team2 && teamsMap[m.team2_id]?.team_name === bracket.final.team1))
-                              ).sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
-
-                              if (finalMatches.length === 0) {
-                                return (
-                                  <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)" }}>No final games played yet.</td></tr>
-                                );
-                              }
-
-                              return finalMatches.map((m, i) => {
-                                const t1 = teamsMap[m.team1_id];
-                                const t2 = teamsMap[m.team2_id];
-                                const isT1Winner = m.winner === t1.team_name;
-                                const winnerName = isT1Winner ? t1.team_name : (m.winner === t2.team_name ? t2.team_name : "Draw");
-                                const loserName = isT1Winner ? t2.team_name : (m.winner === t2.team_name ? t1.team_name : "Draw");
-                                
-                                let scoreA = 0;
-                                let scoreB = 0;
-                                if (m.sport !== "Basketball") {
-                                  scoreA = isT1Winner ? (m.t1_rounds || m.score_team1) : (m.t2_rounds || m.score_team2);
-                                  scoreB = isT1Winner ? (m.t2_rounds || m.score_team2) : (m.t1_rounds || m.score_team1);
-                                } else {
-                                  scoreA = isT1Winner ? m.score_team1 : m.score_team2;
-                                  scoreB = isT1Winner ? m.score_team2 : m.score_team1;
-                                }
-
-                                return (
-                                  <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                                    <td style={{ padding: 16, fontSize: 14, color: "var(--text-muted)" }}>Game {i + 1}</td>
-                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#10b981" }}>{winnerName}</td>
-                                    <td style={{ padding: 16, fontSize: 14 }}>{scoreA} - {scoreB}</td>
-                                    <td style={{ padding: 16, fontSize: 14, fontWeight: 600, color: "#ef4444" }}>{loserName}</td>
-                                  </tr>
-                                );
-                              });
-                            })()}
+                            ${sortedPlayersForReport.slice(0, 15).map((s, i) => {
+                              const p = db.players.find(x => x.player_id === s.player_id);
+                              const t = gTeam(p?.team_id || 0);
+                              return `
+                                <tr style="border-bottom: 1px solid #e2e8f0; background: ${i % 2 === 0 ? 'transparent' : '#f8fafc'};">
+                                  <td style="padding: 8px; font-weight: 800; text-align: center;">${i + 1}</td>
+                                  <td style="padding: 8px; font-weight: 700;">${p?.player_name || 'Unknown'}</td>
+                                  <td style="padding: 8px; color: #64748b;">${t?.team_name || '-'}</td>
+                                  ${statsList.map(st => `<td style="padding: 8px; text-align: center; font-weight: 800;">${(s as any)[st] || 0}</td>`).join('')}
+                                </tr>
+                              `;
+                            }).join('')}
                           </tbody>
                         </table>
                       `;

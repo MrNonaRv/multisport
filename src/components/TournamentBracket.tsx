@@ -166,8 +166,8 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   {match.team1 && !availableTeams.includes(match.team1) && (
                     <option value={match.team1}>{match.team1} (Custom)</option>
                   )}
-                  {availableTeams.map(t => (
-                    <option key={t} value={t}>{t}</option>
+                  {availableTeams.map((t, i) => (
+                    <option key={t + i} value={t}>{t}</option>
                   ))}
                 </select>
               ) : (
@@ -269,8 +269,8 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   {match.team2 && !availableTeams.includes(match.team2) && (
                     <option value={match.team2}>{match.team2} (Custom)</option>
                   )}
-                  {availableTeams.map(t => (
-                    <option key={t} value={t}>{t}</option>
+                  {availableTeams.map((t, i) => (
+                    <option key={t + i} value={t}>{t}</option>
                   ))}
                 </select>
               ) : (
@@ -662,8 +662,8 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = ({
                     <option value="">-- Select Champion --</option>
                     {bracket.final.team1 && <option value={bracket.final.team1}>{bracket.final.team1}</option>}
                     {bracket.final.team2 && <option value={bracket.final.team2}>{bracket.final.team2}</option>}
-                    {availableTeams.filter(t => t !== bracket.final.team1 && t !== bracket.final.team2).map(t => (
-                      <option key={t} value={t}>{t}</option>
+                    {availableTeams.filter(t => t !== bracket.final.team1 && t !== bracket.final.team2).map((t, i) => (
+                      <option key={t + i} value={t}>{t}</option>
                     ))}
                   </select>
 
