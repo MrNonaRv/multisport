@@ -379,6 +379,12 @@ const MatchCard = React.memo(({
 });
 
 export default function SportPage() {
+  const getOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
   const { sportName } = useParams();
   const sport = sportName ? sportName.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : "Basketball";
   const { db, updateMatchDetails, updateMatchScore, updateMatchLiveState, addMatch, deleteMatch } = useDatabase();
@@ -519,7 +525,7 @@ export default function SportPage() {
     { id: "matches", lbl: "MATCHES" },
     { id: "teams", lbl: "TEAMS" },
     { id: "leaderboards", lbl: "LEADERBOARDS" },
-    { id: "standings", lbl: "RANKINGS" },
+    { id: "standings", lbl: "STANDINGS" },
     { id: "finals", lbl: "GAME FINALS" },
   ];
 
@@ -956,29 +962,29 @@ ${allPlayersHtml}
           {/* STANDINGS SECTION */}
           {sec === "standings" && (
             <div>
-              <h2 style={{ textAlign: "center", fontSize: mob ? 28 : 36, fontWeight: 900, marginBottom: 30, letterSpacing: -1 }}>RANKINGS</h2>
+              <h2 style={{ textAlign: "center", fontSize: mob ? 28 : 36, fontWeight: 900, marginBottom: 30, letterSpacing: -1 }}>STANDINGS</h2>
               <div style={{ background: "var(--panel-bg)", backdropFilter: "blur(15px)", borderRadius: 16, overflow: "hidden", boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)", border: "1px solid var(--border-color)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}>
                   <thead>
                     <tr style={{ background: "var(--border-color)", color: "var(--text-main)" }}>
-                      <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>Pos</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase", textAlign: "left" }}>Team</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>GP</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>W</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>L</th>
                       <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>Win %</th>
+                      <th style={{ padding: 20, fontSize: 13, fontWeight: 800, textTransform: "uppercase" }}>Rank</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sortedStandings.map((t, i) => {
                       return (
                         <tr key={t.team_id} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                          <td style={{ padding: 16, fontSize: 16, fontWeight: 900 }}>{i + 1}</td>
                           <td style={{ padding: 16, fontSize: 15, fontWeight: 700, textAlign: "left" }}>{t.team_name}</td>
                           <td style={{ padding: 16, fontSize: 16, fontWeight: 700 }}>{t.total}</td>
                           <td style={{ padding: 16, fontSize: 16, color: "#10b981", fontWeight: 900 }}>{t.won}</td>
                           <td style={{ padding: 16, fontSize: 16, color: "#ef4444", fontWeight: 900 }}>{t.lost}</td>
                           <td style={{ padding: 16, fontSize: 16, fontWeight: 900 }}>{t.pct.toFixed(1)}%</td>
+                          <td style={{ padding: 16, fontSize: 16, fontWeight: 900, color: i === 0 ? "#f59e0b" : "var(--text-main)" }}>{getOrdinal(i + 1)}</td>
                         </tr>
                       );
                     })}
