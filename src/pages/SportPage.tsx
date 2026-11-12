@@ -851,7 +851,7 @@ export default function SportPage() {
                       const sortedPlayersForReport = [...aggregatedStats].sort((a, b) => ((b as any)[topPerformer.primaryStat] || 0) - ((a as any)[topPerformer.primaryStat] || 0));
                       const statsList = S_STATS[sport as keyof typeof S_STATS] || [];
                       const allPlayersHtml = `
-                        <h3 style="font-size: 16px; font-weight: 800; text-transform: uppercase; color: #0f172a; margin-top: 30px; margin-bottom: 20px;">All Players Ranking</h3>
+                        <h3 style="font-size: 16px; font-weight: 800; text-transform: uppercase; color: #0f172a; margin-top: 30px; margin-bottom: 20px;">All Players Standing</h3>
                         <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: sans-serif; font-size: 13px;">
                           <thead>
                             <tr style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 11px;">
@@ -1017,15 +1017,21 @@ ${allPlayersHtml}
                   </div>
                 </div>
 
-                {user && topPerformer && (
+                {topPerformer && (
                   <div style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", borderRadius: 24, padding: 32, border: "1px solid var(--border-color)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", justifyContent: "center" }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: theme.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 20 }}>Top Performer</div>
-                    <div style={{ width: 100, height: 100, borderRadius: "50%", background: "var(--border-color)", border: `4px solid ${theme.bg}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, marginBottom: 16 }}>👤</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, marginBottom: 4 }}>{topPerformer.player?.player_name}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.6, marginBottom: 20 }}>{topPerformer.team?.team_name}</div>
+                    <div style={{ width: 100, height: 100, borderRadius: "50%", background: "var(--border-color)", border: `4px solid ${theme.bg}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, marginBottom: 16, overflow: "hidden" }}>
+                      {topPerformer.player?.photo_url ? (
+                        <img src={topPerformer.player.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        "👤"
+                      )}
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 900, marginBottom: 4 }}>{topPerformer.player?.player_name || "Top Athlete"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.6, marginBottom: 20 }}>{topPerformer.team?.team_name || "Independent"}</div>
                     <div style={{ background: "var(--border-color)", padding: "12px 24px", borderRadius: 16, width: "100%" }}>
                       <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.5, textTransform: "uppercase" }}>{topPerformer.primaryStat.replace("_", " ")}</div>
-                      <div style={{ fontSize: 32, fontWeight: 900, color: theme.accent }}>{(topPerformer as any)[topPerformer.primaryStat]}</div>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: theme.accent }}>{(topPerformer as any)[topPerformer.primaryStat] || 0}</div>
                     </div>
                   </div>
                 )}

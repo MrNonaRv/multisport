@@ -252,8 +252,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     if (data === undefined) return null;
     
     // If it's a string and looks like a base64 image (starts with data:image/)
-    if (typeof data === 'string' && data.startsWith('data:image/') && data.length > 1000) {
-      console.warn("Pruning large base64 string from Firestore document");
+    if (typeof data === 'string' && data.startsWith('data:image/') && data.length > 80000) {
+      console.warn("Pruning oversized base64 string from Firestore document");
       return null;
     }
 

@@ -1667,6 +1667,53 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Cloud Integration Links & References */}
+        <div style={{ ...card, border: "1px solid rgba(56, 189, 248, 0.4)", background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)" }}>
+          <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900, color: "#38bdf8" }}>Cloud Service Consoles & Integration Links</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>
+            Direct access to your Supabase storage and Firebase project consoles powering this application:
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+            <div style={{ background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#10b981", marginBottom: 6 }}>Supabase Storage & Database</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Bucket: <code>athlete-images</code></div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a 
+                  href="https://supabase.com/dashboard" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, fontSize: 12 }}
+                >
+                  Supabase Dashboard ↗
+                </a>
+                <a 
+                  href="https://fcgzargsezyykdrqcrrn.supabase.co" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{ background: "var(--border-color)", color: "var(--text-main)", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, fontSize: 12 }}
+                >
+                  Project API Endpoint ↗
+                </a>
+              </div>
+            </div>
+
+            <div style={{ background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#38bdf8", marginBottom: 6 }}>Firebase Firestore & Auth</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Project ID: <code>{firebaseConfig.projectId}</code></div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a 
+                  href="https://console.firebase.google.com" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, fontSize: 12 }}
+                >
+                  Firebase Console ↗
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Supabase Direct Configuration Card */}
         <div style={{ ...card, border: "1px solid #38bdf840", background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)" }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 900, color: "#38bdf8" }}>Supabase Storage Direct Configuration</h3>

@@ -10,16 +10,12 @@ function getStoredSupabaseConfig() {
   } catch {}
 
   const rawUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseUrl = (!rawUrl || rawUrl.includes('YOUR_SUPABASE_PROJECT_URL')) 
-    ? 'https://fcgzargsezyykdrqcrrn.supabase.co' 
-    : rawUrl;
-
   const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const supabaseAnonKey = (!rawKey || rawKey.includes('YOUR_SUPABASE_ANON_KEY'))
-    ? 'sb_publishable_oaT0DWnQUHfO83OrfTLDrg_W-M0yuXm'
-    : rawKey;
+  if (rawUrl && rawKey && !rawUrl.includes('YOUR_SUPABASE_PROJECT_URL')) {
+    return { url: rawUrl, key: rawKey };
+  }
   
-  return { url: supabaseUrl, key: supabaseAnonKey };
+  return { url: '', key: '' };
 }
 
 const config = getStoredSupabaseConfig();
