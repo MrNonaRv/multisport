@@ -515,15 +515,6 @@ export default function SportPage() {
     }).sort((a, b) => b.pct - a.pct || b.won - a.won);
   }, [tms, mtc, teamsMap]);
 
-  const topPerformer = useMemo(() => {
-    if (aggregatedStats.length === 0) return null;
-    const primaryStat = S_STATS[sport as keyof typeof S_STATS]?.[0] || "points";
-    const top = [...aggregatedStats].sort((a, b) => ((b as any)[primaryStat] || 0) - ((a as any)[primaryStat] || 0))[0];
-    const player = playersMap[top.player_id];
-    const team = player ? teamsMap[player.team_id] : null;
-    return { ...top, player, team, primaryStat };
-  }, [aggregatedStats, sport, playersMap, teamsMap]);
-
   const getPlayerAndTeam = (playerId: number) => {
     let p = playersMap[playerId] || db.players.find(x => Number(x.player_id) === Number(playerId));
     let t = p ? teamsMap[p.team_id] : null;
@@ -546,6 +537,15 @@ export default function SportPage() {
     }
     return { p, t };
   };
+
+  const topPerformer = useMemo(() => {
+    if (aggregatedStats.length === 0) return null;
+    const primaryStat = S_STATS[sport as keyof typeof S_STATS]?.[0] || "points";
+    const top = [...aggregatedStats].sort((a, b) => ((b as any)[primaryStat] || 0) - ((a as any)[primaryStat] || 0))[0];
+    if (!top) return null;
+    const { p: player, t: team } = getPlayerAndTeam(top.player_id);
+    return { ...top, player, team, primaryStat };
+  }, [aggregatedStats, sport, playersMap, teamsMap, db.players]);
 
   const theme = SPORT_THEMES[sport] || SPORT_THEMES["Basketball"];
 
