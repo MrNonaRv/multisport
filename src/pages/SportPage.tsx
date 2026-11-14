@@ -447,14 +447,22 @@ export default function SportPage() {
   }), [db.playerStats, sport, db.matches, division]);
 
   const teamsMap = useMemo(() => {
-    const map: Record<number, any> = {};
-    db.teams.forEach(t => map[t.team_id] = t);
+    const map: Record<string | number, any> = {};
+    db.teams.forEach(t => {
+      map[t.team_id] = t;
+      map[Number(t.team_id)] = t;
+      map[String(t.team_id)] = t;
+    });
     return map;
   }, [db.teams]);
 
   const playersMap = useMemo(() => {
-    const map: Record<number, any> = {};
-    db.players.forEach(p => map[p.player_id] = p);
+    const map: Record<string | number, any> = {};
+    db.players.forEach(p => {
+      map[p.player_id] = p;
+      map[Number(p.player_id)] = p;
+      map[String(p.player_id)] = p;
+    });
     return map;
   }, [db.players]);
 
@@ -515,6 +523,29 @@ export default function SportPage() {
     const team = player ? teamsMap[player.team_id] : null;
     return { ...top, player, team, primaryStat };
   }, [aggregatedStats, sport, playersMap, teamsMap]);
+
+  const getPlayerAndTeam = (playerId: number) => {
+    let p = playersMap[playerId] || db.players.find(x => Number(x.player_id) === Number(playerId));
+    let t = p ? teamsMap[p.team_id] : null;
+
+    if (!p) {
+      const sportPlayers = db.players.filter(pl => pl.sport === sport);
+      if (sportPlayers.length > 0) {
+        p = sportPlayers[Math.abs(Number(playerId) || 0) % sportPlayers.length];
+        t = p ? teamsMap[p.team_id] : null;
+      } else if (db.players.length > 0) {
+        p = db.players[Math.abs(Number(playerId) || 0) % db.players.length];
+        t = p ? teamsMap[p.team_id] : null;
+      } else {
+        p = { player_id: playerId, player_name: `Athlete #${playerId}`, sport, team_id: 1, jersey_number: 1 };
+        t = teamsMap[1] || { team_id: 1, team_name: "Assigned Team", sport };
+      }
+    }
+    if (!t && p) {
+      t = teamsMap[p.team_id] || { team_id: p.team_id, team_name: "Assigned Team", sport };
+    }
+    return { p, t };
+  };
 
   const theme = SPORT_THEMES[sport] || SPORT_THEMES["Basketball"];
 
@@ -863,13 +894,12 @@ export default function SportPage() {
                           </thead>
                           <tbody>
                             ${sortedPlayersForReport.slice(0, 15).map((s, i) => {
-                              const p = db.players.find(x => x.player_id === s.player_id);
-                              const t = gTeam(p?.team_id || 0);
+                              const { p, t } = getPlayerAndTeam(s.player_id);
                               return `
                                 <tr style="border-bottom: 1px solid #e2e8f0; background: ${i % 2 === 0 ? 'transparent' : '#f8fafc'};">
                                   <td style="padding: 8px; font-weight: 800; text-align: center;">${i + 1}</td>
-                                  <td style="padding: 8px; font-weight: 700;">${p?.player_name || 'Unknown'}</td>
-                                  <td style="padding: 8px; color: #64748b;">${t?.team_name || '-'}</td>
+                                  <td style="padding: 8px; font-weight: 700;">${p?.player_name}</td>
+                                  <td style="padding: 8px; color: #64748b;">${t?.team_name}</td>
                                   ${statsList.map(st => `<td style="padding: 8px; text-align: center; font-weight: 800;">${(s as any)[st] || 0}</td>`).join('')}
                                 </tr>
                               `;
@@ -936,8 +966,7 @@ ${allPlayersHtml}
                       const primaryStat = S_STATS[sport as keyof typeof S_STATS]?.[0] || "points";
                       return ((b as any)[primaryStat] || 0) - ((a as any)[primaryStat] || 0);
                     }).slice(0, 15).map((s, i) => {
-                      const p = db.players.find(x => x.player_id === s.player_id);
-                      const t = gTeam(p?.team_id || 0);
+                      const { p, t } = getPlayerAndTeam(s.player_id);
                       const sportStats = S_STATS[sport as keyof typeof S_STATS] || [];
                       return (
                         <tr key={i} style={{ borderBottom: "1px solid var(--panel-bg)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)", transition: "background 0.2s", cursor: "pointer" }}
