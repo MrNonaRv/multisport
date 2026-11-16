@@ -66,6 +66,7 @@ interface DatabaseContextType {
   addMatch: (match: Omit<Match, "match_id">) => void;
   updatePlayerStat: (matchId: number, playerId: number, sport: string, statKey: keyof PlayerStat, increment: number) => void;
   addUser: (user: Omit<User, "user_id">) => void;
+  updateUser: (userId: number, user: Partial<User>) => void;
   deleteUser: (userId: number) => void;
   addActivityLog: (message: string) => void;
   updateBracket: (sport: string, bracket: Bracket) => void;
@@ -611,7 +612,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       }
 
       nextDb.matches = prev.matches.map(m => 
-        m.match_id === matchId ? { ...m, status, winner: updatedWinner, mvp_id } : m
+        m.match_id === matchId ? { 
+          ...m, 
+          status, 
+          winner: updatedWinner, 
+          mvp_id,
+          remaining_time: status === "completed" ? "0:00" : m.remaining_time,
+          remaining_seconds: status === "completed" ? 0 : m.remaining_seconds,
+          clock_status: status === "completed" ? "paused" : m.clock_status
+        } : m
       );
 
       if (status === "completed" && updatedWinner) {
@@ -761,9 +770,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, [setDbAndSync]);
 
   const updatePlayer = useCallback((playerId: number, player: Partial<Player>) => {
+    const numId = Number(playerId);
     setDbAndSync(prev => ({
       ...prev,
-      players: prev.players.map(p => Number(p.player_id) === Number(playerId) ? { ...p, ...player } : p)
+      players: prev.players.map(p => Number(p.player_id) === numId ? { ...p, ...player } : p),
+      playerStats: player.sport 
+        ? prev.playerStats.map(s => Number(s.player_id) === numId ? { ...s, sport: player.sport! } : s)
+        : prev.playerStats
     }), true);
   }, [setDbAndSync]);
 
@@ -824,6 +837,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       };
     }, true);
   }, []);
+
+  const updateUser = useCallback((userId: number, userUpdate: Partial<User>) => {
+    const numId = Number(userId);
+    setDbAndSync(prev => ({
+      ...prev,
+      users: prev.users.map(u => Number(u.user_id) === numId ? { ...u, ...userUpdate } : u)
+    }), true);
+  }, [setDbAndSync]);
 
   const deleteUser = useCallback((userId: number) => {
     const numId = Number(userId);
@@ -906,6 +927,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
           updatedM.status = params.matchStatus;
           if (params.winner !== undefined) {
             updatedM.winner = params.winner;
+          }
+          if (params.matchStatus === "completed") {
+            updatedM.clock_status = "paused";
+            updatedM.remaining_time = "0:00";
+            updatedM.remaining_seconds = 0;
           }
         }
 
@@ -1182,6 +1208,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addMatch,
     updatePlayerStat,
     addUser,
+    updateUser,
     deleteUser,
     addActivityLog,
     updateBracket,
@@ -1215,6 +1242,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     addMatch,
     updatePlayerStat,
     addUser,
+    updateUser,
     deleteUser,
     addActivityLog,
     updateBracket,

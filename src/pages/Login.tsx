@@ -17,8 +17,12 @@ export default function Login() {
     e.preventDefault();
     const loggedInUser = db.users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === pass);
     if (login(email, pass) && loggedInUser) {
-      if (loggedInUser.role === "TABULATOR" && loggedInUser.assignedSport) {
-        navigate(`/sport/${loggedInUser.assignedSport.toLowerCase().split(' ').join('-')}`);
+      const userSports = loggedInUser.assignedSports && loggedInUser.assignedSports.length > 0
+        ? loggedInUser.assignedSports
+        : (loggedInUser.assignedSport ? [loggedInUser.assignedSport] : []);
+
+      if (loggedInUser.role === "TABULATOR" && userSports.length === 1) {
+        navigate(`/sport/${userSports[0].toLowerCase().split(' ').join('-')}`);
       } else {
         navigate("/dashboard");
       }

@@ -108,11 +108,20 @@ const MatchCard = React.memo(({
 
   useEffect(() => {
     let interval: any;
+    if (m.status === "completed") {
+      setDisplayTime("0:00");
+      return;
+    }
     if (m.clock_status === "running" && m.last_clock_update !== undefined && m.remaining_seconds !== undefined) {
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - m.last_clock_update!) / 1000);
         let currentRemaining = m.remaining_seconds! - elapsed;
-        if (currentRemaining < 0) currentRemaining = 0;
+        if (currentRemaining <= 0) {
+          currentRemaining = 0;
+          clearInterval(interval);
+          setDisplayTime("0:00");
+          return;
+        }
         
         const mins = Math.floor(currentRemaining / 60);
         const secs = currentRemaining % 60;
@@ -121,8 +130,10 @@ const MatchCard = React.memo(({
     } else {
       setDisplayTime(m.remaining_time || "");
     }
-    return () => clearInterval(interval);
-  }, [m.clock_status, m.last_clock_update, m.remaining_seconds, m.remaining_time]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [m.clock_status, m.last_clock_update, m.remaining_seconds, m.remaining_time, m.status]);
 
   const isLive = m.status === "live";
   const isCompleted = m.status === "completed";
@@ -152,7 +163,9 @@ const MatchCard = React.memo(({
   return (
     <div style={{ background: "var(--panel-bg)", backdropFilter: "blur(10px)", borderRadius: 16, border: "1px solid var(--border-color)", padding: 24, boxShadow: "0 0 20px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <span style={{ fontSize: 12, fontWeight: 800, background: isLive ? "#ef4444" : "var(--border-color)", color: isLive ? "#ffffff" : "var(--text-main)", padding: "4px 12px", borderRadius: 20, textTransform: "uppercase" }}>{m.status}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, background: isLive ? "#ef4444" : "var(--border-color)", color: isLive ? "#ffffff" : "var(--text-main)", padding: "4px 12px", borderRadius: 20, textTransform: "uppercase" }}>
+          {isCompleted ? "FINAL SCORE" : m.status}
+        </span>
         <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.7 }}>{m.game_label} • {m.match_date}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20 }}>
@@ -404,10 +417,14 @@ export default function SportPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user?.role === "TABULATOR" && user?.assignedSport) {
-      const assignedSlug = user.assignedSport.toLowerCase().split(' ').join('-');
-      if (sportName && sportName.toLowerCase() !== assignedSlug) {
-        navigate(`/sport/${assignedSlug}`, { replace: true });
+    const userSports = user?.assignedSports && user.assignedSports.length > 0
+      ? user.assignedSports
+      : (user?.assignedSport ? [user.assignedSport] : []);
+    
+    if (user?.role === "TABULATOR" && userSports.length > 0) {
+      const allowedSlugs = userSports.map(s => s.toLowerCase().split(' ').join('-'));
+      if (sportName && !allowedSlugs.includes(sportName.toLowerCase())) {
+        navigate(`/sport/${allowedSlugs[0]}`, { replace: true });
       }
     }
   }, [user, sportName, navigate]);
@@ -1445,7 +1462,7 @@ const getStat = (playerId: number, statKey: string) => {
                             <div style="text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e2e8f0;">
                               <h1 style="margin: 0; font-size: 22px; font-weight: 900; text-transform: uppercase;">OFFICIAL MATCH REPORT</h1>
                               <p style="margin: 8px 0 0; font-size: 13px; color: #64748b; font-weight: 600;">${match.sport.toUpperCase()} ${match.category ? `• ${match.category.toUpperCase()}` : ''}</p>
-                              <p style="margin: 4px 0 0; font-size: 14px; color: #64748b;">Status: ${match.status.toUpperCase()}</p>
+                              <p style="margin: 4px 0 0; font-size: 14px; color: #64748b;">Status: ${match.status === "completed" ? "FINAL SCORE" : match.status.toUpperCase()}</p>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #f8fafc; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
@@ -1530,7 +1547,7 @@ const getStat = (playerId: number, statKey: string) => {
                     <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-muted)", marginTop: 8 }}>{t1?.team_name}</div>
                   </div>
                   <div style={{ flex: 1, textAlign: "center", display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: match.status === "live" ? "#ef4444" : "var(--text-main)", textTransform: "uppercase" }}>{match.status}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: match.status === "live" ? "#ef4444" : (match.status === "completed" ? "#10b981" : "var(--text-main)"), textTransform: "uppercase" }}>{match.status === "completed" ? "FINAL SCORE" : match.status}</div>
                     {(match.sport !== "Basketball") && <div style={{ fontSize: 12, fontWeight: 900, color: "var(--text-muted)" }}>SETS / ROUNDS</div>}
                     {match.current_period && <div style={{ fontSize: 16, fontWeight: 900, color: "#38bdf8" }}>{match.current_period}</div>}
                     {match.remaining_time && <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-main)" }}>{match.remaining_time}</div>}

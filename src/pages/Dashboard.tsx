@@ -76,7 +76,7 @@ const DashboardMatchCard = React.memo(({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={Badge(m.status === "live" ? "#ef4444" : m.status === "completed" ? "#10b981" : "var(--text-muted)")}>
-            {m.status.toUpperCase()}
+            {m.status === "completed" ? "FINAL SCORE" : m.status.toUpperCase()}
           </span>
           {m.category && <span style={Badge("var(--border-hover)")}>{m.category}</span>}
           {m.game_label && <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, padding: "2px 6px", background: "var(--bg)", borderRadius: 4, whiteSpace: "nowrap" }}>{m.game_label}</span>}
@@ -151,9 +151,11 @@ export default function Dashboard() {
     addTeam, 
     deleteTeam,
     addPlayer, 
+    updatePlayer,
     deletePlayer,
     updatePlayerStat,
     addUser,
+    updateUser,
     deleteUser,
     addActivityLog,
     updateBracket,
@@ -201,22 +203,48 @@ export default function Dashboard() {
 
   const [matchSportFilter, setMatchSportFilter] = useState("");
 
-  const allowedSport = user?.role === "ADMIN" ? null : user?.assignedSport;
+  const userAssignedSports: string[] = useMemo(() => {
+    if (user?.assignedSports && user.assignedSports.length > 0) {
+      return user.assignedSports;
+    }
+    if (user?.assignedSport) {
+      return [user.assignedSport];
+    }
+    if (user?.role === "ADMIN") {
+      return rawDb.sports;
+    }
+    return rawDb.sports;
+  }, [user?.assignedSports, user?.assignedSport, user?.role, rawDb.sports]);
 
   const filteredDb = useMemo(() => {
-    if (!allowedSport) return rawDb;
+    const hasExplicitSports = (user?.assignedSports && user.assignedSports.length > 0) || !!user?.assignedSport;
+    if (!hasExplicitSports && user?.role === "ADMIN") {
+      return rawDb;
+    }
+
+    const sportsToInclude = rawDb.sports.filter(s => userAssignedSports.includes(s));
     return {
       ...rawDb,
-      teams: rawDb.teams.filter(t => t.sport === allowedSport),
-      players: rawDb.players.filter(p => p.sport === allowedSport),
-      matches: rawDb.matches.filter(m => m.sport === allowedSport),
-      brackets: rawDb.brackets.filter(b => b.sport === allowedSport),
-      referees: rawDb.referees?.filter(r => r.sport === allowedSport) || [],
-      sports: [allowedSport]
+      teams: rawDb.teams.filter(t => userAssignedSports.includes(t.sport)),
+      players: rawDb.players.filter(p => userAssignedSports.includes(p.sport)),
+      matches: rawDb.matches.filter(m => userAssignedSports.includes(m.sport)),
+      brackets: rawDb.brackets.filter(b => userAssignedSports.includes(b.sport)),
+      referees: rawDb.referees?.filter(r => userAssignedSports.includes(r.sport)) || [],
+      sports: sportsToInclude.length > 0 ? sportsToInclude : (userAssignedSports.length > 0 ? userAssignedSports : rawDb.sports)
     };
-  }, [rawDb, allowedSport]);
+  }, [rawDb, userAssignedSports, user?.role, user?.assignedSports, user?.assignedSport]);
 
   const db = filteredDb;
+
+  const viewSiteHref = useMemo(() => {
+    const sList = user?.assignedSports && user.assignedSports.length > 0
+      ? user.assignedSports
+      : (user?.assignedSport ? [user.assignedSport] : []);
+    if (user?.role === "TABULATOR" && sList.length > 0) {
+      return `/sport/${sList[0].toLowerCase().split(' ').join('-')}`;
+    }
+    return "/";
+  }, [user]);
 
   useEffect(() => { if(!matchSportFilter && db.sports.length) setMatchSportFilter(db.sports[0]); }, [db.sports, matchSportFilter]);
 
@@ -237,14 +265,34 @@ export default function Dashboard() {
   const [newPlayerJersey, setNewPlayerJersey] = useState("");
   const [newPlayerGender, setNewPlayerGender] = useState("Male");
   const [newPlayerPhoto, setNewPlayerPhoto] = useState("");
-
   const [newPlayerDivision, setNewPlayerDivision] = useState("Open Division");
+
+  // Edit Player State
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editPlayerName, setEditPlayerName] = useState("");
+  const [editPlayerJersey, setEditPlayerJersey] = useState("");
+  const [editPlayerSport, setEditPlayerSport] = useState("");
+  const [editPlayerTeamId, setEditPlayerTeamId] = useState<number>(0);
+  const [editPlayerCategory, setEditPlayerCategory] = useState("Open Division");
+  const [editPlayerGender, setEditPlayerGender] = useState("Male");
+  const [editPlayerPhoto, setEditPlayerPhoto] = useState("");
+  const [isCompressingEditPhoto, setIsCompressingEditPhoto] = useState(false);
+
   // Add User State
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<"ADMIN" | "TABULATOR">("TABULATOR");
-  const [newUserSport, setNewUserSport] = useState(db.sports[0] || "");
+  const [newUserSports, setNewUserSports] = useState<string[]>([]);
+  useEffect(() => {
+    if (newUserSports.length === 0 && rawDb.sports.length > 0) {
+      setNewUserSports([rawDb.sports[0]]);
+    }
+  }, [rawDb.sports, newUserSports.length]);
+
+  // Edit User Sports Modal State
+  const [editingUserSports, setEditingUserSports] = useState<User | null>(null);
+  const [editUserSelectedSports, setEditUserSelectedSports] = useState<string[]>([]);
 
   // System State
   const [newSportName, setNewSportName] = useState("");
@@ -344,9 +392,9 @@ export default function Dashboard() {
 
   const teamsMap = useMemo(() => {
     const map: Record<number, Team> = {};
-    db.teams.forEach(t => map[t.team_id] = t);
+    rawDb.teams.forEach(t => map[t.team_id] = t);
     return map;
-  }, [db.teams]);
+  }, [rawDb.teams]);
 
   const filteredMatches = useMemo(() => db.matches.filter(m => m.sport === matchSportFilter), [db.matches, matchSportFilter]);
 
@@ -474,19 +522,101 @@ export default function Dashboard() {
     showMsg("s", "Player added and synced successfully!");
   };
 
+  const handleStartEditPlayer = (p: Player) => {
+    setEditingPlayer(p);
+    setEditPlayerName(p.player_name);
+    setEditPlayerJersey(String(p.jersey_number));
+    setEditPlayerSport(p.sport);
+    setEditPlayerTeamId(p.team_id);
+    setEditPlayerCategory(p.category || teamsMap[p.team_id]?.category || "Open Division");
+    setEditPlayerGender(p.gender || "Male");
+    setEditPlayerPhoto(p.photo_url || "");
+  };
+
+  const handleEditPlayerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setIsCompressingEditPhoto(true);
+        const compressed = await compressImageFile(file, { maxWidth: 240, maxHeight: 240, quality: 0.8 });
+        setEditPlayerPhoto(compressed);
+        showMsg("s", `Photo optimized & attached (${getImageSizeKb(compressed)} KB)`);
+      } catch (err: any) {
+        showMsg("e", err.message || "Failed to process player photo");
+      } finally {
+        setIsCompressingEditPhoto(false);
+      }
+    }
+  };
+
+  const handleSavePlayerEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlayer) return;
+    if (!editPlayerName.trim()) return showMsg("e", "Please enter player name.");
+    if (!editPlayerTeamId) return showMsg("e", "Please select a team.");
+
+    const team = rawDb.teams.find(t => t.team_id === Number(editPlayerTeamId));
+    const sportToUse = editPlayerSport || team?.sport || editingPlayer.sport;
+    const jerseyValue = (sportToUse === "Taekwondo" || sportToUse === "Arnis") 
+      ? editPlayerJersey 
+      : (parseInt(editPlayerJersey) || editPlayerJersey);
+
+    updatePlayer(editingPlayer.player_id, {
+      player_name: editPlayerName.trim(),
+      team_id: Number(editPlayerTeamId),
+      sport: sportToUse,
+      category: editPlayerCategory || team?.category || (editPlayerGender === "Female" ? "Women's Division" : "Men's Division"),
+      jersey_number: jerseyValue as any,
+      gender: editPlayerGender as any,
+      photo_url: editPlayerPhoto || undefined
+    });
+
+    addActivityLog(`${user?.name} updated player: ${editPlayerName.trim()} (#${jerseyValue})`);
+    await forceSyncToCloud();
+    setEditingPlayer(null);
+    showMsg("s", `Player "${editPlayerName}" updated successfully!`);
+  };
+
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return showMsg("e", "Please fill in all user fields.");
+    if (newUserSports.length === 0) return showMsg("e", "Please select at least one sport for this user.");
+    
     addUser({ 
-      name: newUserName, 
-      email: newUserEmail, 
+      name: newUserName.trim(), 
+      email: newUserEmail.trim(), 
       password: newUserPassword, 
       role: newUserRole,
-      assignedSport: newUserRole === "TABULATOR" ? newUserSport : undefined
+      assignedSports: newUserSports,
+      assignedSport: newUserSports[0]
     });
-    addActivityLog(`${user?.name} created a new ${newUserRole} user: ${newUserName} ${newUserRole === "TABULATOR" ? `for ${newUserSport}` : ""}`);
+    addActivityLog(`${user?.name} created a new ${newUserRole} user: ${newUserName} for sports: ${newUserSports.join(", ")}`);
     setNewUserName(""); setNewUserEmail(""); setNewUserPassword("");
     showMsg("s", "User added successfully!");
+  };
+
+  const handleStartEditUserSports = (u: User) => {
+    setEditingUserSports(u);
+    setEditUserSelectedSports(
+      u.assignedSports && u.assignedSports.length > 0
+        ? [...u.assignedSports]
+        : (u.assignedSport ? [u.assignedSport] : [...rawDb.sports])
+    );
+  };
+
+  const handleSaveUserSports = async () => {
+    if (!editingUserSports) return;
+    if (editUserSelectedSports.length === 0) {
+      return showMsg("e", "Please select at least one sport for this user.");
+    }
+    updateUser(editingUserSports.user_id, {
+      assignedSports: editUserSelectedSports,
+      assignedSport: editUserSelectedSports[0]
+    });
+    addActivityLog(`${user?.name} updated assigned sports for user ${editingUserSports.name}: ${editUserSelectedSports.join(", ")}`);
+    await forceSyncToCloud();
+    setEditingUserSports(null);
+    showMsg("s", `Assigned sports updated for ${editingUserSports.name}!`);
   };
 
   const handleAddSport = (e: React.FormEvent) => {
@@ -908,7 +1038,7 @@ export default function Dashboard() {
             
             {isSidebarOpen && (
                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                 <Link to={user?.role === "TABULATOR" && user?.assignedSport ? `/sport/${user.assignedSport.toLowerCase().split(' ').join('-')}` : "/"} style={{ flex: 1, textDecoration: "none" }}>
+                 <Link to={viewSiteHref} style={{ flex: 1, textDecoration: "none" }}>
                    <button style={{ width: "100%", background: "var(--border-color)", color: "var(--text-main)", border: "none", padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                       <LayoutDashboard size={14} /> View Site
                    </button>
@@ -1258,7 +1388,17 @@ export default function Dashboard() {
                   <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{teamsMap[p.team_id]?.team_name} • {p.sport} • {p.category || teamsMap[p.team_id]?.category || "N/A"}</div>
                 </div>
               </div>
-              <InlineDeleteButton onConfirm={() => deletePlayer(p.player_id)} title="Delete player" label="Delete player?" size={22} />
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => handleStartEditPlayer(p)}
+                  title="Edit player profile"
+                  style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  <Edit size={15} /> Edit
+                </button>
+                <InlineDeleteButton onConfirm={() => deletePlayer(p.player_id)} title="Delete player" label="Delete player?" size={22} />
+              </div>
             </div>
           ))}
         </div>
@@ -1412,42 +1552,138 @@ export default function Dashboard() {
   };
 
   const renderUsersTab = () => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 350px), 1fr))", gap: 24 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 24 }}>
       <div style={{ ...card, background: "linear-gradient(135deg, var(--panel-bg) 0%, var(--bg) 100%)", boxShadow: "0 0 25px var(--glow-color), 0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}>
         <h2 style={{ margin: "0 0 24px", fontSize: 20, fontWeight: 800, display: "flex", alignItems: "center", gap: 12 }}><Shield size={24} color="#f59e0b" /> Add Staff User</h2>
         <form onSubmit={handleAddUser} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Full Name" style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }} />
-          <input type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} placeholder="Email Address" style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }} />
-          <input type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Password" style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }} />
-          <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as any)} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }}>
-            <option value="TABULATOR">Tabulator</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-          {newUserRole === "TABULATOR" && (
-            <select value={newUserSport} onChange={e => setNewUserSport(e.target.value)} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }}>
-              {db.sports.map((s, i) => <option key={s + i} value={s}>{s}</option>)}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Full Name</label>
+            <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Full Name" required style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Email Address</label>
+            <input type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} placeholder="Email Address" required style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Password</label>
+            <input type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Password" required style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>User Role</label>
+            <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as any)} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)", fontWeight: 700 }}>
+              <option value="TABULATOR" style={{ color: "#000" }}>Tabulator</option>
+              <option value="ADMIN" style={{ color: "#000" }}>Admin</option>
             </select>
-          )}
-          <button type="submit" style={{ background: "#f59e0b", color: "var(--bg)", border: "none", padding: "12px", borderRadius: 8, fontWeight: 800, cursor: "pointer" }}>Create User</button>
+          </div>
+          
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                Assigned Sports ({newUserSports.length} selected)
+              </label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setNewUserSports([...rawDb.sports])}
+                  style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewUserSports([])}
+                  style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, maxHeight: 160, overflowY: "auto", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
+              {rawDb.sports.map(s => {
+                const isChecked = newUserSports.includes(s);
+                return (
+                  <label
+                    key={s}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 8px",
+                      background: isChecked ? "rgba(56, 189, 248, 0.15)" : "var(--panel-bg)",
+                      border: `1.5px solid ${isChecked ? "#38bdf8" : "var(--border-color)"}`,
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      userSelect: "none"
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setNewUserSports(prev => [...prev, s]);
+                        } else {
+                          setNewUserSports(prev => prev.filter(sp => sp !== s));
+                        }
+                      }}
+                    />
+                    <span style={{ color: isChecked ? "#38bdf8" : "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "block" }}>
+              Applies across both ADMIN and TABULATOR roles. User will be granted access to these sports.
+            </span>
+          </div>
+
+          <button type="submit" style={{ background: "#f59e0b", color: "var(--bg)", border: "none", padding: "14px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15, marginTop: 4 }}>+ CREATE USER</button>
         </form>
       </div>
+
       <div style={card}>
         <h2 style={{ margin: "0 0 24px", fontSize: 20, fontWeight: 800 }}>Staff List</h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {db.users.map(u => (
-            <div key={u.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel-bg)", padding: 12, borderRadius: 8 }}>
-              <div>
-                <div style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
-                  {u.name} <span style={Badge(u.role === "ADMIN" ? "#f59e0b" : "#38bdf8")}>{u.role}</span>
-                  {u.assignedSport && <span style={Badge("#64748b")}>{u.assignedSport}</span>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {db.users.map(u => {
+            const userSportsList = u.assignedSports && u.assignedSports.length > 0
+              ? u.assignedSports
+              : (u.assignedSport ? [u.assignedSport] : []);
+
+            return (
+              <div key={u.user_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--panel-bg)", padding: 14, borderRadius: 10, border: "1px solid var(--border-color)", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {u.name} <span style={Badge(u.role === "ADMIN" ? "#f59e0b" : "#38bdf8")}>{u.role}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{u.email}</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
+                    {userSportsList.length > 0 ? (
+                      userSportsList.map(sp => (
+                        <span key={sp} style={Badge("#0284c7")}>{sp}</span>
+                      ))
+                    ) : (
+                      <span style={Badge("#10b981")}>All Sports</span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{u.email}</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditUserSports(u)}
+                    title="Edit user assigned sports"
+                    style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)", borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <Edit size={13} /> Edit Sports
+                  </button>
+                  {u.user_id !== user?.user_id && (
+                    <InlineDeleteButton onConfirm={() => deleteUser(u.user_id)} title="Delete user" label="Delete user?" size={18} />
+                  )}
+                </div>
               </div>
-              {u.user_id !== user?.user_id && (
-                <InlineDeleteButton onConfirm={() => deleteUser(u.user_id)} title="Delete user" label="Delete user?" size={18} />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -2095,7 +2331,7 @@ const getStat = (playerId: number, statKey: string) => {
                       <div style="text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e2e8f0;">
                         <h1 style="margin: 0; font-size: 22px; font-weight: 900; text-transform: uppercase;">OFFICIAL MATCH REPORT</h1>
                         <p style="margin: 8px 0 0; font-size: 13px; color: #64748b; font-weight: 600;">${match.sport.toUpperCase()} ${match.category ? `• ${match.category.toUpperCase()}` : ''}</p>
-                        <p style="margin: 4px 0 0; font-size: 14px; color: #64748b;">Status: ${match.status.toUpperCase()}</p>
+                        <p style="margin: 4px 0 0; font-size: 14px; color: #64748b;">Status: ${match.status === "completed" ? "FINAL SCORE" : match.status.toUpperCase()}</p>
                       </div>
                       
                       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #f8fafc; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
@@ -2349,6 +2585,356 @@ const getStat = (playerId: number, statKey: string) => {
     );
   };
 
+  const renderEditPlayerModal = () => {
+    if (!editingPlayer) return null;
+
+    const availableTeams = rawDb.teams.filter(t => !editPlayerSport || t.sport === editPlayerSport);
+    const teamsToDisplay = availableTeams.length > 0 ? availableTeams : rawDb.teams;
+
+    return (
+      <div 
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.75)",
+          backdropFilter: "blur(6px)",
+          zIndex: 1050,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setEditingPlayer(null);
+        }}
+      >
+        <div 
+          style={{
+            background: "var(--panel-bg)",
+            border: "1.5px solid var(--border-color)",
+            borderRadius: 20,
+            padding: 28,
+            maxWidth: 540,
+            width: "100%",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 25px var(--glow-color)",
+            color: "var(--text-main)",
+            maxHeight: "90vh",
+            overflowY: "auto"
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, borderBottom: "1px solid var(--border-color)", paddingBottom: 16 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, display: "flex", alignItems: "center", gap: 10 }}>
+                <Edit size={22} color="#10b981" /> Edit Player Profile
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+                ID #{editingPlayer.player_id} • Updating player information & team assignment
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingPlayer(null)}
+              style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--text-main)", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSavePlayerEdit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Player Name</label>
+              <input
+                type="text"
+                value={editPlayerName}
+                onChange={e => setEditPlayerName(e.target.value)}
+                placeholder="e.g. John Doe"
+                required
+                style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 15, fontWeight: 700 }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Assigned Sport</label>
+                <select
+                  value={editPlayerSport}
+                  onChange={e => {
+                    const newSport = e.target.value;
+                    setEditPlayerSport(newSport);
+                    const matchingTeam = rawDb.teams.find(t => t.sport === newSport);
+                    if (matchingTeam) setEditPlayerTeamId(matchingTeam.team_id);
+                  }}
+                  style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 14, fontWeight: 700 }}
+                >
+                  {rawDb.sports.map(s => <option key={s} value={s} style={{ color: "#000" }}>{s}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Assigned Team</label>
+                <select
+                  value={editPlayerTeamId}
+                  onChange={e => setEditPlayerTeamId(Number(e.target.value))}
+                  required
+                  style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 14, fontWeight: 700 }}
+                >
+                  <option value={0} disabled style={{ color: "#000" }}>Select Team...</option>
+                  {teamsToDisplay.map(t => (
+                    <option key={t.team_id} value={t.team_id} style={{ color: "#000" }}>
+                      {t.team_name} ({t.sport} - {t.category || "Open"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Division / Category</label>
+                <select
+                  value={editPlayerCategory}
+                  onChange={e => setEditPlayerCategory(e.target.value)}
+                  style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 14, fontWeight: 700 }}
+                >
+                  <option value="Men's Division" style={{ color: "#000" }}>Men's Division</option>
+                  <option value="Open Division" style={{ color: "#000" }}>Open Division</option>
+                  <option value="Women's Division" style={{ color: "#000" }}>Women's Division</option>
+                  <option value="Mixed Division" style={{ color: "#000" }}>Mixed Division</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Gender</label>
+                <select
+                  value={editPlayerGender}
+                  onChange={e => setEditPlayerGender(e.target.value)}
+                  style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 14, fontWeight: 700 }}
+                >
+                  <option value="Male" style={{ color: "#000" }}>Male</option>
+                  <option value="Female" style={{ color: "#000" }}>Female</option>
+                  <option value="Non-binary" style={{ color: "#000" }}>Non-binary</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              {["Taekwondo", "Arnis"].includes(editPlayerSport) ? (
+                <>
+                  <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Armor Color</label>
+                  <select
+                    value={editPlayerJersey}
+                    onChange={e => setEditPlayerJersey(e.target.value)}
+                    style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 14, fontWeight: 700 }}
+                  >
+                    <option value="Red" style={{ color: "#000" }}>Red</option>
+                    <option value="Blue" style={{ color: "#000" }}>Blue</option>
+                  </select>
+                </>
+              ) : (
+                <>
+                  <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Jersey Number</label>
+                  <input
+                    type="text"
+                    value={editPlayerJersey}
+                    onChange={e => setEditPlayerJersey(e.target.value)}
+                    placeholder="e.g. 23"
+                    style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "12px 14px", color: "var(--text-main)", fontSize: 14, fontWeight: 700 }}
+                  />
+                </>
+              )}
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Player Photo</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                {editPlayerPhoto ? (
+                  <div style={{ position: "relative" }}>
+                    <img src={editPlayerPhoto} alt="Player" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid #10b981" }} />
+                    <button
+                      type="button"
+                      onClick={() => setEditPlayerPhoto("")}
+                      style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 12, fontWeight: 800 }}>
+                    No Photo
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditPlayerPhotoUpload}
+                    disabled={isCompressingEditPhoto}
+                    style={{ width: "100%", background: "var(--bg)", border: "1.5px solid var(--border-color)", borderRadius: 10, padding: "10px", color: "var(--text-main)", fontSize: 13 }}
+                  />
+                  {isCompressingEditPhoto && <span style={{ fontSize: 12, color: "#38bdf8", marginTop: 4, display: "block" }}>⚡ Optimizing image...</span>}
+                  {editPlayerPhoto && !isCompressingEditPhoto && <span style={{ fontSize: 12, color: "#10b981", marginTop: 4, display: "block" }}>✓ Ready to save ({getImageSizeKb(editPlayerPhoto)} KB)</span>}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setEditingPlayer(null)}
+                style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "var(--text-main)", border: "1px solid var(--border-color)", padding: "14px", borderRadius: 10, fontWeight: 800, cursor: "pointer", fontSize: 14 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isCompressingEditPhoto}
+                style={{ flex: 2, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff", border: "none", padding: "14px", borderRadius: 10, fontWeight: 900, cursor: isCompressingEditPhoto ? "not-allowed" : "pointer", fontSize: 14, boxShadow: "0 8px 16px rgba(16, 185, 129, 0.3)" }}
+              >
+                SAVE CHANGES
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEditUserSportsModal = () => {
+    if (!editingUserSports) return null;
+
+    return (
+      <div 
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.75)",
+          backdropFilter: "blur(6px)",
+          zIndex: 1050,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setEditingUserSports(null);
+        }}
+      >
+        <div 
+          style={{
+            background: "var(--panel-bg)",
+            border: "1.5px solid var(--border-color)",
+            borderRadius: 20,
+            padding: 28,
+            maxWidth: 480,
+            width: "100%",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 25px var(--glow-color)",
+            color: "var(--text-main)",
+            maxHeight: "90vh",
+            overflowY: "auto"
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, borderBottom: "1px solid var(--border-color)", paddingBottom: 16 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, display: "flex", alignItems: "center", gap: 10 }}>
+                <Shield size={20} color="#f59e0b" /> Assign Sports: {editingUserSports.name}
+              </h2>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
+                <span style={Badge(editingUserSports.role === "ADMIN" ? "#f59e0b" : "#38bdf8")}>{editingUserSports.role}</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{editingUserSports.email}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingUserSports(null)}
+              style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--text-main)", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-main)", textTransform: "uppercase" }}>
+                  Selected Sports ({editUserSelectedSports.length})
+                </span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditUserSelectedSports([...rawDb.sports])}
+                    style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditUserSelectedSports([])}
+                    style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, maxHeight: 220, overflowY: "auto", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 12 }}>
+                {rawDb.sports.map(s => {
+                  const isChecked = editUserSelectedSports.includes(s);
+                  return (
+                    <label
+                      key={s}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        background: isChecked ? "rgba(56, 189, 248, 0.15)" : "var(--panel-bg)",
+                        border: `1.5px solid ${isChecked ? "#38bdf8" : "var(--border-color)"}`,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        userSelect: "none"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setEditUserSelectedSports(prev => [...prev, s]);
+                          } else {
+                            setEditUserSelectedSports(prev => prev.filter(sp => sp !== s));
+                          }
+                        }}
+                      />
+                      <span style={{ color: isChecked ? "#38bdf8" : "var(--text-main)" }}>{s}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => setEditingUserSports(null)}
+                style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "var(--text-main)", border: "1px solid var(--border-color)", padding: "12px", borderRadius: 10, fontWeight: 800, cursor: "pointer", fontSize: 14 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUserSports}
+                style={{ flex: 2, background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", color: "#000", border: "none", padding: "12px", borderRadius: 10, fontWeight: 900, cursor: "pointer", fontSize: 14, boxShadow: "0 8px 16px rgba(245, 158, 11, 0.3)" }}
+              >
+                SAVE ASSIGNMENTS
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", position: "relative", zIndex: 1, flexDirection: "row" }}>
       {renderSidebar()}
@@ -2379,7 +2965,7 @@ const getStat = (playerId: number, statKey: string) => {
           </div>
           {!isSidebarOpen && !mob && (
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <Link to={user?.role === "TABULATOR" && user?.assignedSport ? `/sport/${user.assignedSport.toLowerCase().split(' ').join('-')}` : "/"} style={{ textDecoration: "none" }}>
+              <Link to={viewSiteHref} style={{ textDecoration: "none" }}>
                 <button style={{ background: "var(--border-color)", color: "var(--text-main)", border: "1px solid var(--border-hover)", padding: "10px 20px", borderRadius: 20, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>View Site</button>
               </Link>
             </div>
@@ -2405,6 +2991,8 @@ const getStat = (playerId: number, statKey: string) => {
 
         {renderBoxScoreModal()}
         {renderConfigureMatchSlotModal()}
+        {renderEditPlayerModal()}
+        {renderEditUserSportsModal()}
         {liveControlMatch && <LiveMatchControlModal matchId={liveControlMatch} onClose={() => setLiveControlMatch(null)} />}
       </div>
     </div>

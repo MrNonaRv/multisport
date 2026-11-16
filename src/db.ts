@@ -192,8 +192,8 @@ export function initDB() {
   ];
 
   const users = [
-    {user_id:1,name:"Admin User",email:"admin@sportsmetrics.com",password:"admin123",role:"ADMIN"},
-    {user_id:2,name:"Tab Reyes",email:"tab@sportsmetrics.com",password:"tab123",role:"TABULATOR", assignedSport: "Basketball"},
+    {user_id:1,name:"Admin User",email:"admin@sportsmetrics.com",password:"admin123",role:"ADMIN", assignedSports: ["Basketball", "Volleyball", "Table Tennis", "Badminton", "Sepak Takraw", "Arnis", "Taekwondo"]},
+    {user_id:2,name:"Tab Reyes",email:"tab@sportsmetrics.com",password:"tab123",role:"TABULATOR", assignedSport: "Basketball", assignedSports: ["Basketball", "Volleyball"]},
   ];
   
   const brackets = SPORTS.map(sport => {

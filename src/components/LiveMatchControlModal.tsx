@@ -196,6 +196,10 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
 
   useEffect(() => {
     let interval: any;
+    if (match?.status === "completed") {
+      setTime("0:00");
+      return;
+    }
     if (match?.clock_status === "running" && match?.last_clock_update !== undefined && match?.remaining_seconds !== undefined) {
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - match?.last_clock_update!) / 1000);
@@ -211,6 +215,8 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
            // Count down logic
            if (currentRemaining <= 0) {
               currentRemaining = 0;
+              clearInterval(interval);
+              setTime("0:00");
               recordLiveGameAction({
                 matchId: match!.match_id,
                 clockStatus: "paused",
@@ -218,15 +224,24 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
                 remainingSeconds: 0,
                 activityLogMessage: `Match #${match!.match_id} clock reached 0:00`
               });
+              return;
            }
            const m = Math.floor(currentRemaining / 60);
            const s = currentRemaining % 60;
            setTime(`${m}:${s.toString().padStart(2, "0")}`);
         }
       }, 1000);
+    } else {
+      if (match?.status === "completed") {
+        setTime("0:00");
+      } else if (match?.remaining_time) {
+        setTime(match.remaining_time);
+      }
     }
-    return () => clearInterval(interval);
-  }, [match?.clock_status, match?.last_clock_update, match?.remaining_seconds, match?.match_id, recordLiveGameAction]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [match?.clock_status, match?.last_clock_update, match?.remaining_seconds, match?.match_id, match?.status, recordLiveGameAction]);
   if (!match) return null;
 
   const t1 = db.teams.find(t => t.team_id === match.team1_id);
@@ -339,6 +354,7 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
          newClockStatus = "paused";
          newStatus = "completed";
          newWinner = t1_rounds >= maxRoundsToWin ? (t1?.team_name || null) : (t2?.team_name || null);
+         setTime("0:00");
       }
     }
 
@@ -500,10 +516,12 @@ export default function LiveMatchControlModal({ matchId, onClose }: { matchId: n
   };
 
   const handleEndMatch = () => {
+    setTime("0:00");
     recordLiveGameAction({
       matchId: match.match_id,
       clockStatus: "paused",
-      remainingTime: time,
+      remainingTime: "0:00",
+      remainingSeconds: 0,
       matchStatus: "completed",
       activityLogMessage: `${user?.name || "Official"} ended match #${match.match_id}`
     });
