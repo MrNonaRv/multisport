@@ -199,7 +199,7 @@ export default function Dashboard() {
     if (mob) setIsSidebarOpen(false);
   }, [mob]);
 
-  const [msg, setMsg] = useState<{ t: "s" | "e", m: string } | null>(null);
+  const [msg, setMsg] = useState<{ t: "s" | "e", m: string, sub?: string } | null>(null);
 
   const [matchSportFilter, setMatchSportFilter] = useState("");
 
@@ -284,11 +284,20 @@ export default function Dashboard() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<"ADMIN" | "TABULATOR">("TABULATOR");
   const [newUserSports, setNewUserSports] = useState<string[]>([]);
+  const initializedSportsRef = useRef(false);
   useEffect(() => {
-    if (newUserSports.length === 0 && rawDb.sports.length > 0) {
+    if (!initializedSportsRef.current && rawDb.sports.length > 0) {
       setNewUserSports([rawDb.sports[0]]);
+      initializedSportsRef.current = true;
     }
-  }, [rawDb.sports, newUserSports.length]);
+  }, [rawDb.sports]);
+
+  // Role-Based User Creation Success Popup State
+  const [userCreationSuccess, setUserCreationSuccess] = useState<{
+    role: "ADMIN" | "TABULATOR";
+    userName: string;
+    subMessage: string;
+  } | null>(null);
 
   // Edit User Sports Modal State
   const [editingUserSports, setEditingUserSports] = useState<User | null>(null);
@@ -385,9 +394,9 @@ export default function Dashboard() {
   }, [bracketSport, db.brackets, bracketDivision]);
 
 
-  const showMsg = (type: "s" | "e", text: string) => {
-    setMsg({ t: type, m: text });
-    setTimeout(() => setMsg(null), 3000);
+  const showMsg = (type: "s" | "e", text: string, sub?: string) => {
+    setMsg({ t: type, m: text, sub });
+    setTimeout(() => setMsg(null), sub ? 5000 : 3500);
   };
 
   const teamsMap = useMemo(() => {
@@ -579,20 +588,54 @@ export default function Dashboard() {
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return showMsg("e", "Please fill in all user fields.");
-    if (newUserSports.length === 0) return showMsg("e", "Please select at least one sport for this user.");
+    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) {
+      return showMsg("e", "Please fill in all user fields.");
+    }
+    
+    // Require sports selection only for Tabulators
+    if (newUserRole === "TABULATOR" && newUserSports.length === 0) {
+      return showMsg("e", "Please select at least one sport for this tabulator.");
+    }
+
+    const createdRole = newUserRole;
+    const createdName = newUserName.trim();
+    // For Admins, assign all sports or unrestricted; for Tabulators, assign their selected sports
+    const assigned = createdRole === "ADMIN" ? [...rawDb.sports] : newUserSports;
+    const assignedSingle = assigned[0] || (rawDb.sports[0] || "Basketball");
     
     addUser({ 
-      name: newUserName.trim(), 
+      name: createdName, 
       email: newUserEmail.trim(), 
       password: newUserPassword, 
-      role: newUserRole,
-      assignedSports: newUserSports,
-      assignedSport: newUserSports[0]
+      role: createdRole,
+      assignedSports: assigned,
+      assignedSport: assignedSingle
     });
-    addActivityLog(`${user?.name} created a new ${newUserRole} user: ${newUserName} for sports: ${newUserSports.join(", ")}`);
-    setNewUserName(""); setNewUserEmail(""); setNewUserPassword("");
-    showMsg("s", "User added successfully!");
+
+    if (createdRole === "ADMIN") {
+      addActivityLog(`${user?.name} created a new ADMIN user: ${createdName} (Full Access)`);
+      setUserCreationSuccess({
+        role: "ADMIN",
+        userName: createdName,
+        subMessage: "NOTE: THIS NEW USER CAN ACCESS ALL DATA."
+      });
+      showMsg("s", "User Created Successfully.", "NOTE: THIS NEW USER CAN ACCESS ALL DATA.");
+    } else {
+      addActivityLog(`${user?.name} created a new TABULATOR user: ${createdName} for sports: ${newUserSports.join(", ")}`);
+      setUserCreationSuccess({
+        role: "TABULATOR",
+        userName: createdName,
+        subMessage: "Access is restricted to assigned sports only."
+      });
+      showMsg("s", "User Created Successfully.", "Access is restricted to assigned sports only.");
+    }
+
+    setNewUserName(""); 
+    setNewUserEmail(""); 
+    setNewUserPassword("");
+    if (rawDb.sports.length > 0) {
+      setNewUserSports([rawDb.sports[0]]);
+    }
   };
 
   const handleStartEditUserSports = (u: User) => {
@@ -1570,74 +1613,107 @@ export default function Dashboard() {
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: 6 }}>User Role</label>
-            <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as any)} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)", fontWeight: 700 }}>
+            <select 
+              value={newUserRole} 
+              onChange={e => setNewUserRole(e.target.value as "ADMIN" | "TABULATOR")} 
+              style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "12px", color: "var(--text-main)", fontWeight: 700 }}
+            >
               <option value="TABULATOR" style={{ color: "#000" }}>Tabulator</option>
               <option value="ADMIN" style={{ color: "#000" }}>Admin</option>
             </select>
+            {newUserRole === "ADMIN" && (
+              <div 
+                style={{ 
+                  marginTop: 8, 
+                  padding: "10px 14px", 
+                  background: "rgba(245, 158, 11, 0.12)", 
+                  border: "1px solid rgba(245, 158, 11, 0.4)", 
+                  borderRadius: 8, 
+                  color: "#f59e0b", 
+                  fontSize: 13, 
+                  fontWeight: 700, 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 8,
+                  lineHeight: 1.4
+                }}
+              >
+                <span>⚠️ Warning: Assigning the Admin role grants this user full access to all system data and settings.</span>
+              </div>
+            )}
           </div>
           
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>
-                Assigned Sports ({newUserSports.length} selected)
-              </label>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => setNewUserSports([...rawDb.sports])}
-                  style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                >
-                  Select All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewUserSports([])}
-                  style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, maxHeight: 160, overflowY: "auto", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
-              {rawDb.sports.map(s => {
-                const isChecked = newUserSports.includes(s);
-                return (
-                  <label
-                    key={s}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "6px 8px",
-                      background: isChecked ? "rgba(56, 189, 248, 0.15)" : "var(--panel-bg)",
-                      border: `1.5px solid ${isChecked ? "#38bdf8" : "var(--border-color)"}`,
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      userSelect: "none"
-                    }}
+          {newUserRole === "TABULATOR" ? (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                  Assigned Sports ({newUserSports.length} selected) <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewUserSports([...rawDb.sports])}
+                    style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setNewUserSports(prev => [...prev, s]);
-                        } else {
-                          setNewUserSports(prev => prev.filter(sp => sp !== s));
-                        }
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewUserSports([])}
+                    style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "none", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, maxHeight: 160, overflowY: "auto", background: "var(--bg)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
+                {rawDb.sports.map(s => {
+                  const isChecked = newUserSports.includes(s);
+                  return (
+                    <label
+                      key={s}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 8px",
+                        background: isChecked ? "rgba(56, 189, 248, 0.15)" : "var(--panel-bg)",
+                        border: `1.5px solid ${isChecked ? "#38bdf8" : "var(--border-color)"}`,
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        userSelect: "none"
                       }}
-                    />
-                    <span style={{ color: isChecked ? "#38bdf8" : "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</span>
-                  </label>
-                );
-              })}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setNewUserSports(prev => [...prev, s]);
+                          } else {
+                            setNewUserSports(prev => prev.filter(sp => sp !== s));
+                          }
+                        }}
+                      />
+                      <span style={{ color: isChecked ? "#38bdf8" : "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "block" }}>
+                Access is restricted to assigned sports only. At least one sport must be selected.
+              </span>
             </div>
-            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "block" }}>
-              Applies across both ADMIN and TABULATOR roles. User will be granted access to these sports.
-            </span>
-          </div>
+          ) : (
+            <div style={{ padding: "12px 14px", background: "rgba(245, 158, 11, 0.08)", border: "1px dashed rgba(245, 158, 11, 0.3)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#f59e0b", fontWeight: 700, marginBottom: 4 }}>
+                <CheckCircle2 size={16} /> Full System Access Granted
+              </div>
+              Sports assignment checkboxes are disabled for Admin users because Administrators have unrestricted access to all sports and management modules.
+            </div>
+          )}
 
           <button type="submit" style={{ background: "#f59e0b", color: "var(--bg)", border: "none", padding: "14px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15, marginTop: 4 }}>+ CREATE USER</button>
         </form>
@@ -2935,6 +3011,110 @@ const getStat = (playerId: number, statKey: string) => {
     );
   };
 
+  const renderUserCreationSuccessModal = () => {
+    if (!userCreationSuccess) return null;
+
+    const isAdmin = userCreationSuccess.role === "ADMIN";
+
+    return (
+      <div 
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(6px)",
+          zIndex: 1100,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setUserCreationSuccess(null);
+        }}
+      >
+        <div 
+          style={{
+            background: "var(--panel-bg)",
+            border: `2px solid ${isAdmin ? "#f59e0b" : "#10b981"}`,
+            borderRadius: 20,
+            padding: 32,
+            maxWidth: 460,
+            width: "100%",
+            boxShadow: `0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 30px ${isAdmin ? "rgba(245, 158, 11, 0.25)" : "rgba(16, 185, 129, 0.25)"}`,
+            color: "var(--text-main)",
+            textAlign: "center"
+          }}
+        >
+          <div 
+            style={{ 
+              width: 64, 
+              height: 64, 
+              borderRadius: "50%", 
+              background: isAdmin ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.15)", 
+              color: isAdmin ? "#f59e0b" : "#10b981", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              margin: "0 auto 18px",
+              border: `2px solid ${isAdmin ? "rgba(245, 158, 11, 0.3)" : "rgba(16, 185, 129, 0.3)"}`
+            }}
+          >
+            {isAdmin ? <Shield size={34} /> : <CheckCircle2 size={34} />}
+          </div>
+
+          <h2 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 900 }}>
+            User Created Successfully
+          </h2>
+
+          <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
+            Account created for <strong style={{ color: "var(--text-main)" }}>{userCreationSuccess.userName}</strong> (
+            <span style={{ color: isAdmin ? "#f59e0b" : "#38bdf8", fontWeight: 800 }}>
+              {userCreationSuccess.role}
+            </span>
+            )
+          </p>
+
+          <div 
+            style={{ 
+              padding: "16px 18px", 
+              background: isAdmin ? "rgba(245, 158, 11, 0.12)" : "rgba(56, 189, 248, 0.12)", 
+              border: `1.5px solid ${isAdmin ? "rgba(245, 158, 11, 0.4)" : "rgba(56, 189, 248, 0.4)"}`, 
+              borderRadius: 12, 
+              fontSize: 13, 
+              fontWeight: 800, 
+              color: isAdmin ? "#f59e0b" : "#38bdf8", 
+              marginBottom: 24, 
+              lineHeight: 1.5,
+              letterSpacing: "0.2px"
+            }}
+          >
+            {userCreationSuccess.subMessage}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setUserCreationSuccess(null)}
+            style={{
+              background: isAdmin ? "#f59e0b" : "#0284c7",
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              padding: "12px 28px",
+              fontSize: 15,
+              fontWeight: 800,
+              cursor: "pointer",
+              width: "100%",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
+            }}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", position: "relative", zIndex: 1, flexDirection: "row" }}>
       {renderSidebar()}
@@ -2973,8 +3153,18 @@ const getStat = (playerId: number, statKey: string) => {
         </div>
 
         {msg && (
-          <div style={{ background: msg.t === "s" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${msg.t === "s" ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`, borderRadius: 12, padding: 16, display: "flex", alignItems: "center", gap: 12, color: msg.t === "s" ? "#10b981" : "#ef4444", fontSize: 14, marginBottom: 24 }}>
-            {msg.t === "s" ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />} {msg.m}
+          <div style={{ background: msg.t === "s" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)", border: `1px solid ${msg.t === "s" ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`, borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: 12, color: msg.t === "s" ? "#10b981" : "#ef4444", fontSize: 14, marginBottom: 24, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+            <div style={{ marginTop: 2 }}>
+              {msg.t === "s" ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800 }}>{msg.m}</div>
+              {msg.sub && (
+                <div style={{ fontSize: 13, marginTop: 4, fontWeight: 700, color: msg.t === "s" ? (msg.sub.includes("ALL DATA") ? "#f59e0b" : "#38bdf8") : "#fca5a5" }}>
+                  {msg.sub}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -2993,6 +3183,7 @@ const getStat = (playerId: number, statKey: string) => {
         {renderConfigureMatchSlotModal()}
         {renderEditPlayerModal()}
         {renderEditUserSportsModal()}
+        {renderUserCreationSuccessModal()}
         {liveControlMatch && <LiveMatchControlModal matchId={liveControlMatch} onClose={() => setLiveControlMatch(null)} />}
       </div>
     </div>
